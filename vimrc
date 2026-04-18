@@ -48,7 +48,7 @@ filetype plugin indent on
 syntax on
 
 " ==========================================
-" 3. Linuxプログラミング連携 (ここが肝です)
+" 3. Linuxプログラミング連携
 " ==========================================
 
 " --- マニュアル(man)連携 ---
@@ -57,19 +57,18 @@ runtime ftplugin/man.vim
 nnoremap K :Man <C-R><C-W><CR>
 
 " --- タグジャンプ (ctags) ---
-" 実行前にシェルで `ctags -R .` を叩いておく必要があります
+" 実行前にシェルで `ctags -R .` を叩いておく必要がある
 " Ctrl + ] で定義へジャンプ、Ctrl + t で戻る
 set tags=./tags;,tags;
 
 " --- Make / Quickfix 連携 ---
 " :make でコンパイルし、エラーがあればその行にジャンプする
-" Makefileがあるディレクトリで実行してください
+" Makefileがあるディレクトリで実行する
 nnoremap <Leader>m :make<CR>
 nnoremap <Leader>cn :cnext<CR> " 次のエラーへ
 nnoremap <Leader>cp :cprevious<CR> " 前のエラーへ
 
 " --- 実行ショートカット ---
-" 11月の応用情報（アルゴリズム等）の写経にも便利です
 autocmd FileType c nnoremap <buffer> <Leader>r :!gcc -Wall % -o %< && ./%<<CR>
 autocmd FileType python nnoremap <buffer> <Leader>r :!python3 %<CR>
 autocmd FileType sh nnoremap <buffer> <Leader>r :!bash %<CR>
@@ -96,10 +95,10 @@ autocmd BufWritePost *.tf silent! redraw!
 " 5. 入力補助・スニペット
 " ==========================================
 
-" 保存時に行末の空白を削除（インフラ屋の作法：不要な差分を生まない）
+" 保存時に行末の空白を削除
 autocmd BufWritePre * :%s/\s\+$//e
 
-" 括弧の補完（リズムを崩さないシンプル版）
+" 括弧の補完
 inoremap {<CR> {<CR>}<ESC>O
 inoremap [ []<Left>
 inoremap ( ()<Left>
