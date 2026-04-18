@@ -15,6 +15,7 @@ Homebrew を使用して環境を構築します。
 brew tap hashicorp/tap
 brew install hashicorp/tap/terraform awscli
 brew install localstack/tap/localstack-cli
+```
 ## UbuntuServer用スクリプト
 ```
 #!/bin/bash
