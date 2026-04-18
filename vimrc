@@ -84,6 +84,14 @@ autocmd FileType c setlocal noexpandtab tabstop=8 shiftwidth=8
 " Python (PEP8準拠のためPythonのみスペース4)
 autocmd FileType python setlocal expandtab tabstop=4 shiftwidth=4 textwidth=88
 
+" Terraform (HashiCorp標準はスペース2つ)
+autocmd FileType terraform setlocal expandtab tabstop=2 shiftwidth=2 softtabstop=2
+
+" 保存時に自動で terraform fmt を実行する
+autocmd BufWritePost *.tf silent! !terraform fmt %
+" 実行後に画面が崩れないように再描画
+autocmd BufWritePost *.tf silent! redraw!
+
 " ==========================================
 " 5. 入力補助・スニペット
 " ==========================================
