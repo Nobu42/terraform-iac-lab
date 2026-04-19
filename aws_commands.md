@@ -10,7 +10,7 @@ LocalStack を操作する際は、必ず末尾にエンドポイントを指定
 ---
 
 ## 1. S3（ストレージ）の確認
-
+```
 # バケットの一覧を表示
 aws s3 ls
 
@@ -19,11 +19,11 @@ aws s3 ls s3://バケット名/
 
 # ローカルファイルをバケットにアップロード
 aws s3 cp test.txt s3://バケット名/
-
+```
 ---
 
 ## 2. EC2（仮想サーバー）の確認
-
+```
 # インスタンスの一覧を表示
 aws ec2 describe-instances
 
@@ -32,31 +32,31 @@ aws ec2 describe-instances --filters "Name=instance-state-name,Values=running"
 
 # セキュリティグループの一覧を表示
 aws ec2 describe-security-groups
-
+```
 ---
 
 ## 3. IAM（権限・ユーザー）の確認
-
+```
 # ユーザーの一覧を表示
 aws iam list-users
 
 # ロール（Role）の一覧を表示
 aws iam list-roles
-
+```
 ---
 
 ## 4. 困った時の診断コマンド
-
+```
 # LocalStack 自体のヘルスチェック
 curl http://localhost:4566/_localstack/health
 
 # 現在の自分の認証情報を表示
 aws sts get-caller-identity
-
+```
 ---
 
 ## 5. ネットワーク（VPC周辺）の確認
-
+```
 # VPCの一覧とCIDRを確認
 aws ec2 describe-vpcs --query "Vpcs[*].{ID:VpcId,CIDR:CidrBlock,State:State}" --output table
 
@@ -68,9 +68,9 @@ aws ec2 describe-route-tables --query "RouteTables[*].{ID:RouteTableId,VPC:VpcId
 
 # インターネットゲートウェイ（外出口）の確認
 aws ec2 describe-internet-gateways
-
+```
 ---
-
+```
 ## 6. 運用・調査でよく使うコマンド
 
 # インスタンスの「パブリックIP」だけを取得
@@ -81,13 +81,14 @@ aws ec2 describe-security-groups --group-ids グループID
 
 # SSM経由でログイン（実務の主流）
 aws ssm start-session --target インスタンスID
-
+```
 ---
 
 ## 7. クォータ（制限）とリージョンの確認
-
+```
 # 使用可能なアベイラビリティゾーン(AZ)を確認
 aws ec2 describe-availability-zones --query "AvailabilityZones[*].ZoneName" --output text
 
 # 自分のアカウントで使えるリージョンの一覧
 aws ec2 describe-regions --output table
+```
