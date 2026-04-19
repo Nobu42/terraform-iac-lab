@@ -1,6 +1,6 @@
 # AWS CLI コマンド集（LocalStack 確認用）
 
-## 📌 基本のルール
+##  基本のルール
 LocalStack を操作する際は、必ず末尾にエンドポイントを指定します。
 - 例（外出先）： --endpoint-url http://localhost:4566
 - 例（自宅Ubuntu）： --endpoint-url http://192.168.40.100:4566
