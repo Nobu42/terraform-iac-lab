@@ -20,32 +20,36 @@ brew install localstack/tap/localstack-cli
 ```
 #!/bin/bash
 
+# Ubuntuサーバー側で実施するスクリプト。Ubuntuで実行した後はMac（クライアント）からterraformコマンドを実行する。
 # 1. 作業ディレクトリへ移動
 cd ~/terraform-iac-lab
 
-# 2. 仮想環境の有効化 (実行時に `source` する必要があるため案内を表示)
-if [[ "$0" == "${BASH_SOURCE[0]}" ]]; then
-    echo "Note: Please run this script with 'source ./start.sh' to activate the venv."
-fi
+# 2. 仮想環境の有効化
 source venv/bin/activate
 
-# 3. すでに動いているLocalStackがあれば停止（クリーンな状態にする）
+# 3. クリーンアップ
 echo " Resetting LocalStack..."
 localstack stop > /dev/null 2>&1
 
-# 4. Macからの接続を許可してバックグラウンド起動
-echo " Starting LocalStack for remote access..."
-GATEWAY_LISTEN=0.0.0.0 localstack start -d
+# 4. Macからのアクセスを最適化して起動
+# HOSTNAME_EXTERNAL に Ubuntu の IP を指定することで、Mac側との整合性を高める。
+echo "Starting LocalStack (Remote Access Mode)..."
+HOSTNAME_EXTERNAL=192.168.40.100 GATEWAY_LISTEN=0.0.0.0 localstack start -d
 
-# 5. LocalStackが「Ready」になるまで待機（インフラ屋のこだわり）
-echo -n " Waiting for LocalStack to be ready..."
-while ! curl -s http://localhost:4566/_localstack/health | grep -q '"s3": "available"'; do
+# 5. ヘルスチェック（より厳密な判定）
+echo -n "⏳ Waiting for LocalStack to be ready..."
+until curl -s http://localhost:4566/_localstack/health | grep -q '"init": "initialized"'; do
     echo -n "."
     sleep 2
 done
-echo -e "\nOK! LocalStack is Ready! Mac (192.168.40.100) can now connect."
+echo -e "\n OK! LocalStack is Ready!"
 
-# 6. 現在の状態を表示
+# 6. Mac側で叩くべきコマンドを表示
+echo "--------------------------------------------------------"
+echo " Mac Terminal Command:"
+echo "export LOCALSTACK_HOST=192.168.40.100"
+echo "terraform plan"
+echo "--------------------------------------------------------"
+
 localstack status
 ```
-
