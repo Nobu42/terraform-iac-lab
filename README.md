@@ -1,4 +1,28 @@
 # Terraform IaC Lab
+# Terraform IaC Lab
+
+MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境です。
+
+## 🌐 Network Topology (Home Lab)
+
+```text
+       [ MacBook Air (M4) ]
+               |
+               | (Terraform / AWS CLI)
+               v
+  +--------------------------+      +-------------------------+
+  |  Raspberry Pi 4          |      |  Ubuntu Server          |
+  |  (192.168.40.208)        |      |  (192.168.40.100)       |
+  |                          |      |                         |
+  |  +--------------------+  |      |  +-------------------+  |
+  |  |      CoreDNS       |--|----->|  |    LocalStack     |  |
+  |  |  (localstack.lab)  |  |      |  |  (AWS Simulation) |  |
+  |  +--------------------+  |      |  +-------------------+  |
+  +--------------------------+      +-------------------------+
+               |                                 ^
+               |                                 |
+               +---[ Internal Private Network ]--+
+```
 
 MacBook Air (M4) と自宅の ラズパイ4（DNS)、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC 学習ラボです。
 
