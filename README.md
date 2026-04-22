@@ -1,16 +1,16 @@
 # Terraform IaC Lab
 
-##  目次
-- [Network Topology](#-network-topology-home-lab)
+## 目次
+- [Network Topology](#network-topology-home-lab)
 - [コンセプト](#コンセプト)
   - [~/.bashrc (環境自動判別)](#bashrc)
   - [~/.vimrc (開発環境設定)](#vimrc)
 - [インストールとセットアップ](#インストールとセットアップ)
-  - [Mac (Client Side)](#mac-client-side)
+  - [Mac (Client Side)](#mac-外出先ローカル実行)
   - [Ubuntu Server (LocalStack)](#ubuntuserver用スクリプト)
-  - [Raspberry Pi (CoreDNS)](#7-自宅ラズパイをdnsとして使用)
+  - [Raspberry Pi (CoreDNS)](#自宅ラズパイをdnsとして使用)
 
-MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境です。
+## MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境です。
 
 ##  Network Topology (Home Lab)
 
