@@ -10,7 +10,7 @@
   - [Ubuntu Server (LocalStack)](#ubuntuserver用スクリプト)
   - [Raspberry Pi (CoreDNS)](#自宅ラズパイをdnsとして使用)
 
-## MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境です。
+MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境です。
 
 ##  Network Topology (Home Lab)
 
