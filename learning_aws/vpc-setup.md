@@ -43,22 +43,22 @@ aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc
 aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock}' --output table
 ```
 ## サブネット作成
-- **外部サブネット 1**
+### 外部サブネット 1
 - **サブネット名:** sample-subnet-public01
 - **AZ:**           ap-northeast-1a
 - **IPv4 CIDR:**    10.0.0.0/20
 
-- **外部サブネット 2**
+### 外部サブネット 2
 - **サブネット名:** sample-subnet-public02
 - **AZ:**           ap-northeast-1c
 - **IPv4 CIDR:**    10.0.16.0/20
 
-- **内部サブネット 1**
+### 内部サブネット 1
 - **サブネット名:** sample-subnet-private01
 - **AZ:**           ap-northeast-1a
 - **IPv4 CIDR:**    10.0.64.0/20
 
-- **内部サブネット 2**
+### 内部サブネット 2
 - **サブネット名:** sample-subnet-private02
 - **AZ:**           ap-northeast-1c
 - **IPv4 CIDR:**    10.0.80.0/20
