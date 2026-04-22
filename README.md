@@ -1,6 +1,6 @@
 # Terraform IaC Lab
 
-MacBook Pro (M4) と自宅の Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC 学習ラボです。
+MacBook Air (M4) と自宅の ラズパイ4（DNS)、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC 学習ラボです。
 
 ## コンセプト
 - **ハイブリッド設計:** 自宅の Ubuntu (192.168.40.100) と外出先の Mac を自動判別。
@@ -52,4 +52,35 @@ echo "terraform plan"
 echo "--------------------------------------------------------"
 
 localstack status
+```
+
+7. 自宅ラズパイをDNSとして使用
+```
+# CoreDNSの最新版（1.11.1）をダウンロード
+wget https://github.com/coredns/coredns/releases/download/v1.11.1/coredns_1.11.1_linux_arm64.tgz
+
+# 解凍して実行ファイルを配置
+tar -xvzf coredns_1.11.1_linux_arm64.tgz
+sudo mv coredns /usr/local/bin/
+
+# バージョン確認
+coredns --version
+
+# 設定用ディレクトリ作成
+sudo mkdir -p /etc/coredns
+sudo vi /etc/coredns/Corefile
+
+# 以下の内容を貼り付ける
+.:53 {
+    # ログを出力して動きを見えるようにする
+    log
+    errors
+
+    # 自分のドメイン設定（後でここを編集してLocalStackに繋ぎます）
+    # 外部の問い合わせはGoogleのDNSに飛ばす
+    forward . 8.8.8.8 8.8.4.4
+
+    # キャッシュを有効にして高速化
+    cache 30
+}
 ```
