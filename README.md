@@ -244,16 +244,44 @@ sudo mkdir -p /etc/coredns
 sudo vi /etc/coredns/Corefile
 
 # 以下の内容を貼り付ける
-.:53 {
-    # ログを出力して動きを見えるようにする
+# .lab ドメインの設定
+lab:53 {
+    hosts /etc/coredns/lab.hosts {
+        # 自分のドメイン以外は次に渡す
+        fallthrough
+    }
     log
     errors
+}
 
-    # 自分のドメイン設定（後でここを編集してLocalStackに繋ぎます）
-    # 外部の問い合わせはGoogleのDNSに飛ばす
+# それ以外の全般設定（インターネット用）
+.:53 {
     forward . 8.8.8.8 8.8.4.4
-
-    # キャッシュを有効にして高速化
+    log
+    errors
     cache 30
 }
+
+
+### CoreDNSのサービス化（自動起動）
+ラズパイ再起動時も自動でDNSが立ち上がるように設定します。
+
+1. サービスファイルの作成
+`sudo vi /etc/systemd/system/coredns.service`
+
+```ini
+[Unit]
+Description=CoreDNS DNS server
+After=network.target
+
+[Service]
+PermissionsStartOnly=true
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+User=nobu
+ExecStart=/usr/local/bin/coredns -conf /etc/coredns/Corefile
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
 ```
