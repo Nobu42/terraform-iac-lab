@@ -196,7 +196,7 @@ echo "--------------------------------------------------------"
 localstack status
 ```
 
-7. 自宅ラズパイをDNSとして使用
+## 自宅ラズパイをDNSとして使用
 ```
 # CoreDNSの最新版（1.11.1）をダウンロード
 wget https://github.com/coredns/coredns/releases/download/v1.11.1/coredns_1.11.1_linux_arm64.tgz
