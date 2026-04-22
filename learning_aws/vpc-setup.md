@@ -42,3 +42,52 @@ aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc
 # 全てのVPCのIDと名前、CIDRを一覧で表示（表形式）
 aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock}' --output table
 ```
+## サブネット作成
+- **外部サブネット 1**
+- **サブネット名:** sample-subnet-public01
+- **AZ:**           ap-northeast-1a
+- **IPv4 CIDR:**    10.0.0.0/20
+
+- **外部サブネット 2**
+- **サブネット名:** sample-subnet-public02
+- **AZ:**           ap-northeast-1c
+- **IPv4 CIDR:**    10.0.16.0/20
+
+- **内部サブネット 1**
+- **サブネット名:** sample-subnet-private01
+- **AZ:**           ap-northeast-1a
+- **IPv4 CIDR:**    10.0.64.0/20
+
+- **内部サブネット 2**
+- **サブネット名:** sample-subnet-private02
+- **AZ:**           ap-northeast-1c
+- **IPv4 CIDR:**    10.0.80.0/20
+
+### 4つのサブネットを一括作成
+```
+# 0. VPC IDの再取得（念のため）
+VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
+
+# 1. 外部サブネット 1 (1a)
+PUB01_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.0.0/20 --availability-zone ap-northeast-1a --query 'Subnet.SubnetId' --output text)
+aws ec2 create-tags --resources $PUB01_ID --tags Key=Name,Value=sample-subnet-public01
+
+# 2. 外部サブネット 2 (1c)
+PUB02_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.16.0/20 --availability-zone ap-northeast-1c --query 'Subnet.SubnetId' --output text)
+aws ec2 create-tags --resources $PUB02_ID --tags Key=Name,Value=sample-subnet-public02
+
+# 3. 内部サブネット 1 (1a)
+PRI01_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.64.0/20 --availability-zone ap-northeast-1a --query 'Subnet.SubnetId' --output text)
+aws ec2 create-tags --resources $PRI01_ID --tags Key=Name,Value=sample-subnet-private01
+
+# 4. 内部サブネット 2 (1c)
+PRI02_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.80.0/20 --availability-zone ap-northeast-1c --query 'Subnet.SubnetId' --output text)
+aws ec2 create-tags --resources $PRI02_ID --tags Key=Name,Value=sample-subnet-private02
+```
+### 作成結果の確認
+```
+aws ec2 describe-subnets \
+    --filters Name=vpc-id,Values=$VPC_ID \
+    --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value | [0], AZ:AvailabilityZone, CIDR:CidrBlock, ID:SubnetId}' \
+    --output table
+```
