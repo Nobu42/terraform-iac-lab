@@ -182,7 +182,12 @@ aws ec2 describe-nat-gateways \
     --output table
 ```
 ## ルートテーブル設定
-
+| 項目 | パブリック用 (共通) | プライベート用 1 | プライベート用 2 |
+| :--- | :--- | :--- | :--- |
+| **名前タグ** | `sample-rt-public` | `sample-rt-private01` | `sample-rt-private02` |
+| **ルート (local)** | 10.0.0.0/16 (local) | 10.0.0.0/16 (local) | 10.0.0.0/16 (local) |
+| **ルート (外部)** | 0.0.0.0/0 (sample-igw) | 0.0.0.0/0 (sample-ngw-01) | 0.0.0.0/0 (sample-ngw-02) |
+| **関連付けサブネット** | sample-subnet-public01<br>sample-subnet-public02 | sample-subnet-private01 | sample-subnet-private02 |
 ### パブリック
 ```
 # 1. ルートテーブルの作成
