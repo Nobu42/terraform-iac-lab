@@ -181,4 +181,43 @@ aws ec2 describe-nat-gateways \
     --query 'NatGateways[*].{Name:Tags[?Key==`Name`].Value | [0], State:State, Subnet:SubnetId, PublicIP:NatGatewayAddresses[0].PublicIp}' \
     --output table
 ```
+## ルートテーブル設定
+
+### パブリック
+```
+# 1. ルートテーブルの作成
+RT_PUB_ID=$(aws ec2 create-route-table \
+    --vpc-id $VPC_ID \
+    --query 'RouteTable.RouteTableId' \
+    --output text)
+
+# 2. 名前タグの付与
+aws ec2 create-tags --resources $RT_PUB_ID --tags Key=Name,Value=sample-rt-public
+
+# 3. インターネットゲートウェイへのルートを追加
+# (0.0.0.0/0 の出口を IGW に設定)
+aws ec2 create-route \
+    --route-table-id $RT_PUB_ID \
+    --destination-cidr-block 0.0.0.0/0 \
+    --gateway-id $IGW_ID
+
+# 4. サブネットへの関連付け (Public 01)
+aws ec2 associate-route-table \
+    --subnet-id $PUB01_ID \
+    --route-table-id $RT_PUB_ID
+
+# 5. サブネットへの関連付け (Public 02)
+aws ec2 associate-route-table \
+    --subnet-id $PUB02_ID \
+    --route-table-id $RT_PUB_ID
+
+echo "Public Route Table configured: $RT_PUB_ID"
+```
+#### 設定の確認
+```
+aws ec2 describe-route-tables \
+    --route-table-ids $RT_PUB_ID \
+    --query 'RouteTables[0].Routes' \
+    --output table
+```
 
