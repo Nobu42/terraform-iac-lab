@@ -58,11 +58,10 @@ aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value 
             ┌────────────────┴────────────────┐
             ▼                                 ▼
     [ Public Subnet 01 ]              [ Public Subnet 02 ]
-    (10.0.1.0/24)                     (10.0.2.0/24)
+    ( 10.0.11.0/24 )                  ( 10.0.12.0/24 )
     [sample-subnet-public01]          [sample-subnet-public02]
     ┌──────────────────┐              ┌──────────────────┐
     │ [SG: sg-bastion] │              │ [SG: sg-elb]     │
-    │  - Port 22 (SSH) │              │  - Port 80/443   │
     └──────────────────┘              └──────────────────┘
             │                                 │
             ▼                                 ▼
@@ -78,10 +77,8 @@ aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value 
             │                                   │
             ▼                                   ▼
     [ Private Subnet 01 ]               [ Private Subnet 02 ]
-    (10.0.3.0/24)                       (10.0.4.0/24)
+    ( 10.0.21.0/24 )                    ( 10.0.22.0/24 )
     [sample-subnet-private01]           [sample-subnet-private02]
-            ：                                  ：
-      (Next: EC2/DB?)                     (Next: EC2/DB?)
 ```
 ## サブネット作成
 ### 外部サブネット 1
