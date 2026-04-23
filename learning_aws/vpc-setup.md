@@ -258,7 +258,13 @@ aws ec2 describe-route-tables \
     --output table
 ```
 ## セキュリティグループ設定
-
+| 項目 | 踏み台サーバー用 | ロードバランサー用 |
+| :--- | :--- | :--- |
+| **名前タグ** | `sample-sg-bastion` | `sample-sg-elb` |
+| **説明** | for bastion server | for load balancer |
+| **VPC** | `sample-vpc` | `sample-vpc` |
+| **インバウンド 1** | SSH (22) / 0.0.0.0/0 | HTTP (80) / 0.0.0.0/0 |
+| **インバウンド 2** | - | HTTPS (443) / 0.0.0.0/0 |
 ```
 # --- 1. 踏み台サーバー用 SG 作成 ---
 SG_BASTION_ID=$(aws ec2 create-security-group \
