@@ -130,3 +130,48 @@ aws ec2 describe-internet-gateways \
     --query 'InternetGateways[0].Attachments[0].State' \
     --output text
 ```
+
+##  NATゲートウェイの作成
+
+
+```
+# 0. サブネットIDの再取得（念のため最新のものを変数に入れる）
+PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
+PUB02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public02 --query 'Subnets[0].SubnetId' --output text)
+
+# --- NAT Gateway 01 (AZ-1a用) ---
+# 1. EIPの確保
+ALLOC_ID_01=$(aws ec2 allocate-address --domain vpc --query 'AllocationId' --output text)
+
+# 2. NAT GWの作成
+NGW01_ID=$(aws ec2 create-nat-gateway \
+    --subnet-id $PUB01_ID \
+    --allocation-id $ALLOC_ID_01 \
+    --query 'NatGateway.NatGatewayId' --output text)
+
+# 3. 名前タグ付与
+aws ec2 create-tags --resources $NGW01_ID --tags Key=Name,Value=sample-ngw-01
+
+
+# --- NAT Gateway 02 (AZ-1c用) ---
+# 4. EIPの確保
+ALLOC_ID_02=$(aws ec2 allocate-address --domain vpc --query 'AllocationId' --output text)
+
+# 5. NAT GWの作成
+NGW02_ID=$(aws ec2 create-nat-gateway \
+    --subnet-id $PUB02_ID \
+    --allocation-id $ALLOC_ID_02 \
+    --query 'NatGateway.NatGatewayId' --output text)
+
+# 6. 名前タグ付与
+aws ec2 create-tags --resources $NGW02_ID --tags Key=Name,Value=sample-ngw-02
+
+echo "NAT Gateways created: $NGW01_ID, $NGW02_ID"
+```
+
+### 作成状態の確認
+```
+aws ec2 describe-nat-gateways \
+    --query 'NatGateways[*].{Name:Tags[?Key==`Name`].Value | [0], State:State, Subnet:SubnetId, PublicIP:NatGatewayAddresses[0].PublicIp}' \
+    --output table
+```
