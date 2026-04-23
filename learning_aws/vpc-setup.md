@@ -91,3 +91,40 @@ aws ec2 describe-subnets \
     --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value | [0], AZ:AvailabilityZone, CIDR:CidrBlock, ID:SubnetId}' \
     --output table
 ```
+
+## インターネットゲートウェイの作成
+
+- **名前タグ:** sample-igw
+- **VPC:** sample-vpc
+
+```
+# 1. ターゲットとなるVPCのIDを取得
+VPC_ID=$(aws ec2 describe-vpcs \
+    --filters Name=tag:Name,Values=sample-vpc \
+    --query 'Vpcs[0].VpcId' \
+    --output text)
+
+# 2. インターネットゲートウェイ(IGW)を作成し、IDを変数に格納
+IGW_ID=$(aws ec2 create-internet-gateway \
+    --query 'InternetGateway.InternetGatewayId' \
+    --output text)
+
+# 3. IGWに名前タグ「sample-igw」を付与
+aws ec2 create-tags \
+    --resources $IGW_ID \
+    --tags Key=Name,Value=sample-igw
+
+# 4. 作成したIGWをVPCにアタッチ（接続）
+aws ec2 attach-internet-gateway \
+    --vpc-id $VPC_ID \
+    --internet-gateway-id $IGW_ID
+
+echo "Success! Attached IGW ($IGW_ID) to VPC ($VPC_ID)"
+
+### 正常に接続されたかの確認
+```
+aws ec2 describe-internet-gateways \
+    --internet-gateway-ids $IGW_ID \
+    --query 'InternetGateways[0].Attachments[0].State' \
+    --output text
+```
