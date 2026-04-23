@@ -120,6 +120,7 @@ aws ec2 attach-internet-gateway \
     --internet-gateway-id $IGW_ID
 
 echo "Success! Attached IGW ($IGW_ID) to VPC ($VPC_ID)"
+```
 
 ### 正常に接続されたかの確認
 
