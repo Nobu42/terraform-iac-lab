@@ -42,6 +42,45 @@ aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc
 # 全てのVPCのIDと名前、CIDRを一覧で表示（表形式）
 aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock}' --output table
 ```
+# ネットワーク構築
+[ VPC: sample-vpc (10.0.0.0/16) ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    │
+    │  [ Internet Gateway: sample-igw ] <───> ( Internet )
+    │
+    ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │ [ Route Table: sample-rt-public ]                        │
+  │  - 0.0.0.0/0  =>  sample-igw                             │
+  └──────────────────────────┬───────────────────────────────┘
+                             │
+            ┌────────────────┴────────────────┐
+            ▼                                 ▼
+    [ Public Subnet 01 ]              [ Public Subnet 02 ]
+    (10.0.1.0/24)                     (10.0.2.0/24)
+    [sample-subnet-public01]          [sample-subnet-public02]
+    ┌──────────────────┐              ┌──────────────────┐
+    │ [SG: sg-bastion] │              │ [SG: sg-elb]     │
+    │  - Port 22 (SSH) │              │  - Port 80/443   │
+    └──────────────────┘              └──────────────────┘
+            │                                 │
+            ▼                                 ▼
+    [ NAT Gateway 01 ]                [ NAT Gateway 02 ]
+    (sample-ngw-01)                   (sample-ngw-02)
+            │                                 │
+━━━━━━━━━━━━│━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━│━━━━━━━━━━━━━━━
+            │                                 │
+  ┌─────────▼───────────────────────┐ ┌─────────▼───────────────────────┐
+  │[Route Table: sample-rt-private01]│ │[Route Table: sample-rt-private02]│
+  │ - 0.0.0.0/0 => sample-ngw-01     │ │ - 0.0.0.0/0 => sample-ngw-02     │
+  └─────────┬───────────────────────┘ └─────────┬───────────────────────┘
+            │                                   │
+            ▼                                   ▼
+    [ Private Subnet 01 ]               [ Private Subnet 02 ]
+    (10.0.3.0/24)                       (10.0.4.0/24)
+    [sample-subnet-private01]           [sample-subnet-private02]
+            ：                                  ：
+      (Next: EC2/DB?)                     (Next: EC2/DB?)
 ## サブネット作成
 ### 外部サブネット 1
 - **サブネット名:** sample-subnet-public01
