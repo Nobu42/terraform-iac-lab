@@ -133,6 +133,12 @@ aws ec2 describe-internet-gateways \
 
 ##  NATゲートウェイの作成
 
+| 項目 | NATゲートウェイ 1 | NATゲートウェイ 2 |
+| :--- | :--- | :--- |
+| **名前** | sample-ngw-01 | sample-ngw-02 |
+| **サブネット** | sample-subnet-public01 | sample-subnet-public02 |
+| **接続タイプ** | パブリック | パブリック |
+| **Elastic IP** | 自動生成 | 自動生成 |
 
 ```
 # 0. サブネットIDの再取得（念のため最新のものを変数に入れる）
@@ -175,3 +181,4 @@ aws ec2 describe-nat-gateways \
     --query 'NatGateways[*].{Name:Tags[?Key==`Name`].Value | [0], State:State, Subnet:SubnetId, PublicIP:NatGatewayAddresses[0].PublicIp}' \
     --output table
 ```
+
