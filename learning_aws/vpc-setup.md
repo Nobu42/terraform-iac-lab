@@ -43,6 +43,7 @@ aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc
 aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock}' --output table
 ```
 # ネットワーク構築
+```
 [ VPC: sample-vpc (10.0.0.0/16) ]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     │
@@ -81,6 +82,7 @@ aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value 
     [sample-subnet-private01]           [sample-subnet-private02]
             ：                                  ：
       (Next: EC2/DB?)                     (Next: EC2/DB?)
+```
 ## サブネット作成
 ### 外部サブネット 1
 - **サブネット名:** sample-subnet-public01
