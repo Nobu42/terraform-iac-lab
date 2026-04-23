@@ -257,4 +257,51 @@ aws ec2 describe-route-tables \
     --query 'RouteTables[*].{Name:Tags[?Key==`Name`].Value | [0], Routes:Routes[?DestinationCidrBlock==`0.0.0.0/0`].[GatewayId,NatGatewayId] | [0]}' \
     --output table
 ```
+## セキュリティグループ設定
+
+```
+# --- 1. 踏み台サーバー用 SG 作成 ---
+SG_BASTION_ID=$(aws ec2 create-security-group \
+    --group-name sample-sg-bastion \
+    --description "for bastion server" \
+    --vpc-id $VPC_ID \
+    --query 'GroupId' --output text)
+
+# SSH(22番ポート)を全開放
+aws ec2 authorize-security-group-ingress \
+    --group-id $SG_BASTION_ID \
+    --protocol tcp \
+    --port 22 \
+    --cidr 0.0.0.0/0
+
+# --- 2. ロードバランサー用 SG 作成 ---
+SG_ELB_ID=$(aws ec2 create-security-group \
+    --group-name sample-sg-elb \
+    --description "for load balancer" \
+    --vpc-id $VPC_ID \
+    --query 'GroupId' --output text)
+
+# HTTP(80番ポート)を全開放
+aws ec2 authorize-security-group-ingress \
+    --group-id $SG_ELB_ID \
+    --protocol tcp \
+    --port 80 \
+    --cidr 0.0.0.0/0
+
+# HTTPS(443番ポート)を全開放
+aws ec2 authorize-security-group-ingress \
+    --group-id $SG_ELB_ID \
+    --protocol tcp \
+    --port 443 \
+    --cidr 0.0.0.0/0
+
+echo "Security Groups created: Bastion($SG_BASTION_ID), ELB($SG_ELB_ID)"
+```
+### 設定の確認
+```
+aws ec2 describe-security-groups \
+    --group-ids $SG_BASTION_ID $SG_ELB_ID \
+    --query 'SecurityGroups[*].{Name:GroupName, Rules:IpPermissions[*].{Port:FromPort, Range:IpRanges[0].CidrIp}}' \
+    --output table
+```
 
