@@ -220,4 +220,36 @@ aws ec2 describe-route-tables \
     --query 'RouteTables[0].Routes' \
     --output table
 ```
+### プライベート
+```
+# --- Private Route Table 01 (for AZ-1a) ---
+# 1. ルートテーブルの作成
+RT_PRI01_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID --query 'RouteTable.RouteTableId' --output text)
+# 2. 名前タグ付与
+aws ec2 create-tags --resources $RT_PRI01_ID --tags Key=Name,Value=sample-rt-private01
+# 3. NATゲートウェイ(01)へのルート追加
+aws ec2 create-route --route-table-id $RT_PRI01_ID --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $NGW01_ID
+# 4. サブネット(Private01)への関連付け
+aws ec2 associate-route-table --subnet-id $PRI01_ID --route-table-id $RT_PRI01_ID
+
+# --- Private Route Table 02 (for AZ-1c) ---
+# 5. ルートテーブルの作成
+RT_PRI02_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID --query 'RouteTable.RouteTableId' --output text)
+# 6. 名前タグ付与
+aws ec2 create-tags --resources $RT_PRI02_ID --tags Key=Name,Value=sample-rt-private02
+# 7. NATゲートウェイ(02)へのルート追加
+aws ec2 create-route --route-table-id $RT_PRI02_ID --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $NGW02_ID
+# 8. サブネット(Private02)への関連付け
+aws ec2 associate-route-table --subnet-id $PRI02_ID --route-table-id $RT_PRI02_ID
+
+echo "Private Route Tables configured: $RT_PRI01_ID, $RT_PRI02_ID"
+```
+
+#### 設定の確認
+```
+aws ec2 describe-route-tables \
+    --filters Name=vpc-id,Values=$VPC_ID \
+    --query 'RouteTables[*].{Name:Tags[?Key==`Name`].Value | [0], Routes:Routes[?DestinationCidrBlock==`0.0.0.0/0`].[GatewayId,NatGatewayId] | [0]}' \
+    --output table
+```
 
