@@ -10,6 +10,10 @@
   - [Ubuntu Server (LocalStack)](#ubuntuserver用スクリプト)
   - [Raspberry Pi (CoreDNS)](#自宅ラズパイをdnsとして使用)
 
+## 学習コンテンツ一覧
+- [AWS構築演習 (LocalStack)](./learning_aws/vpc-setup.md) : ネットワークからEC2構築まで
+- [Terraform演習](./execises/) : 基本構文からLambda構築まで
+
 MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境です。
 
 ##  Network Topology (Home Lab)
