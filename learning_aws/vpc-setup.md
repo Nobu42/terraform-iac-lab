@@ -22,7 +22,7 @@ VPC_ID=$(aws ec2 create-vpc \
     --query 'Vpc.VpcId' \
     --output text)
 
-# 2. 作成されたIDの確認（画面に表示されます）
+# 2. 作成されたIDの確認（画面に表示される）
 echo "New VPC ID in Tokyo: $VPC_ID"
 
 # 3. 名前タグ（sample-vpc）を付与
@@ -408,9 +408,9 @@ aws ec2 create-key-pair \
 chmod 400 nobu.pem
 
 # 2. 踏み台サーバーの起動
-# --associate-public-ip-address でパブリックIPを有効化します
+# --associate-public-ip-address でパブリックIPを有効化する
 # 踏み台サーバーの起動
-# 【重要】--image-id を LocalStack が「コンテナ」として認識できる ID に変更します
+# 【重要】--image-id を LocalStack が「コンテナ」として認識できる ID に変更する
 # Amazon Linux 2 の LocalStack 用デフォルト ID: ami-07b643b5e45e
 BASTION_ID=$(aws ec2 run-instances \
     --image-id ami-07b643b5e45e \
@@ -442,10 +442,10 @@ aws ec2 describe-instances \
 # Macのターミナルから実行
 ssh -i nobu.pem -p 60577 root@192.168.40.100
 
-# 1. OSのリリース情報を確認（これで Amazon Linux 2 であることが分かります）
+# 1. OSのリリース情報を確認（これで Amazon Linux 2 であることが分かる）
 cat /etc/system-release
 
-# 2. ネットワーク設定を確認（172.17.0.3 が見えるはずです）
+# 2. ネットワーク設定を確認（IPが見えるはず）
 ip addr show eth0
 
 # 3. CPU情報を確認
@@ -457,7 +457,7 @@ cat /proc/cpuinfo | grep "model name"
 useradd ec2-user
 
 # 2. ec2-user が sudo（管理者権限）を使えるように設定
-# (LocalStackのコンテナ環境では /etc/sudoers をいじるより、グループ追加が手っ取り早いです)
+# (LocalStackのコンテナ環境では /etc/sudoers をいじるより、グループ追加が手っ取り早い)
 yum install -y sudo
 echo "ec2-user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
