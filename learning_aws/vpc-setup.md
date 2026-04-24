@@ -451,3 +451,29 @@ ip addr show eth0
 # 3. CPU情報を確認
 cat /proc/cpuinfo | grep "model name"
 ```
+```
+# 1. ec2-user という名前のユーザーを作成
+useradd ec2-user
+
+# 2. ec2-user が sudo（管理者権限）を使えるように設定
+# (LocalStackのコンテナ環境では /etc/sudoers をいじるより、グループ追加が手っ取り早いです)
+yum install -y sudo
+echo "ec2-user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# 3. ec2-user に切り替える
+su - ec2-user
+```
+```
+# 1. ec2-userのSSH設定ディレクトリを作成
+mkdir -p /home/ec2-user/.ssh
+chmod 700 /home/ec2-user/.ssh
+
+# 2. rootが持っている「許可された鍵リスト」を ec2-user にコピー
+cp /root/.ssh/authorized_keys /home/ec2-user/.ssh/
+chown -R ec2-user:ec2-user /home/ec2-user/.ssh
+chmod 600 /home/ec2-user/.ssh/authorized_keys
+
+# パスワードを「password」に設定する場合
+echo "ec2-user:password" | chpasswd
+```
+
