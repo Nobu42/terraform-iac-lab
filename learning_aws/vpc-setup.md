@@ -348,3 +348,59 @@ aws ec2 describe-security-groups \
     --output table
 ```
 
+# サーバ構築
+
+## 踏み台サーバー（Bastion）の作成
+
+### キーペア設計
+| 項目 | 設定内容 |
+| :--- | :--- |
+| **名前** | `nobu` |
+| **タイプ** | RSA |
+| **形式** | `.pem` |
+
+### EC2 インスタンス設計：sample-ec2-bastion
+| 項目 | 設定内容 |
+| :--- | :--- |
+| **名前タグ** | `sample-ec2-bastion` |
+| **AMI ID** | `ami-0ff8a91507f77f867` (LocalStack / Amazon Linux 2相当) |
+| **タイプ** | `t2.micro` |
+| **キーペア** | `nobu` |
+| **サブネット** | `sample-subnet-public01` |
+| **パブリックIP** | 有効 |
+| **セキュリティグループ** | `sample-sg-bastion` |
+
+```
+# 1. キーペアの作成と保存
+aws ec2 create-key-pair \
+    --key-name nobu \
+    --query 'KeyMaterial' \
+    --output text > nobu.pem
+
+# パーミッションを自分だけが読み取れる設定に変更（必須）
+chmod 400 nobu.pem
+
+# 2. 踏み台サーバーの起動
+# --associate-public-ip-address でパブリックIPを有効化します
+BASTION_ID=$(aws ec2 run-instances \
+    --image-id ami-0ff8a91507f77f867 \
+    --count 1 \
+    --instance-type t2.micro \
+    --key-name nobu \
+    --security-group-ids $SG_BASTION_ID \
+    --subnet-id $PUB01_ID \
+    --associate-public-ip-address \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-bastion}]' \
+    --query 'Instances[0].InstanceId' \
+    --output text)
+
+echo "Bastion Instance Created: $BASTION_ID"
+```
+### 起動確認
+```
+aws ec2 describe-instances \
+    --instance-ids $BASTION_ID \
+    --query 'Reservations[0].Instances[0].{Status:State.Name, PublicIP:PublicIpAddress}' \
+    --output table
+```
+
