@@ -42,4 +42,5 @@ aws ec2 describe-instances \
     --query 'Reservations[0].Instances[0].{Status:State.Name, PublicIP:PublicIpAddress}' \
     --output table
 
-
+# インスタンス名とポート番号だけを綺麗に表示
+docker ps --filter "name=localstack-ec2" --format "table {{.Names}}\t{{.Ports}}"

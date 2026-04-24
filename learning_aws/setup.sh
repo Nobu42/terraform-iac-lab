@@ -221,18 +221,12 @@ aws ec2 describe-security-groups \
     --query 'SecurityGroups[*].{Name:GroupName, Rules:IpPermissions[*].{Port:FromPort, Range:IpRanges[0].CidrIp}}' \
     --output table
 
-# 1. キーペアの作成と保存
-aws ec2 create-key-pair \
-    --key-name nobu \
-    --query 'KeyMaterial' \
-    --output text > nobu.pem
 
-# パーミッションを自分だけが読み取れる設定に変更（必須）
-chmod 400 nobu.pem
-
-# 2. 踏み台サーバーの起動
+# 踏み台サーバーの起動
 # --associate-public-ip-address でパブリックIPを有効化します
 # 毎回削除する
+# LocalStack(AWS)側から既存のキーペアを削除（エラーが出ても無視する）
+aws ec2 delete-key-pair --key-name nobu > /dev/null 2>&1
 rm -f nobu.pem
 # 1. キーペアの作成と保存
 aws ec2 create-key-pair \

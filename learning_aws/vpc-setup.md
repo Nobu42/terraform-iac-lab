@@ -397,7 +397,10 @@ BASTION_ID=$(aws ec2 run-instances \
 echo "Bastion Instance Created: $BASTION_ID"
 ```
 ```
-# 毎回削除する
+
+# LocalStack(AWS)側から既存のキーペアを削除（エラーが出ても無視する）
+aws ec2 delete-key-pair --key-name nobu > /dev/null 2>&1
+# mac側（クライアント）も削除
 rm -f nobu.pem
 # 1. キーペアの作成と保存
 aws ec2 create-key-pair \
@@ -519,4 +522,5 @@ WEB02_ID=$(aws ec2 run-instances \
 echo "Created Web01: $WEB01_ID"
 echo "Created Web02: $WEB02_ID"
 ```
+### 鍵の作成
 
