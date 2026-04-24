@@ -98,7 +98,7 @@ fi
 # AWS CLI で LocalStack エンドポイントを強制的に使うためのエイリアス
 alias aws='aws --endpoint-url=$AWS_ENDPOINT_URL'
 ```
-###vimrc
+### vimrc
 Terraform 開発をサポート機能を~/.vimrcに追記
 ```
 call plug#begin('~/.vim/plugged')
