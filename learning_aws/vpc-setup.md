@@ -1,5 +1,3 @@
-# AWS CLIによる設定作業
-
 # AWS VPC 環境設定
 
 ## VPC設定値
