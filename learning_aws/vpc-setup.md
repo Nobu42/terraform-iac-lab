@@ -412,6 +412,7 @@ chmod 400 nobu.pem
 # 踏み台サーバーの起動
 # 【重要】--image-id を LocalStack が「コンテナ」として認識できる ID に変更する
 # Amazon Linux 2 の LocalStack 用デフォルト ID: ami-07b643b5e45e
+```
 BASTION_ID=$(aws ec2 run-instances \
     --image-id ami-07b643b5e45e \
     --count 1 \
