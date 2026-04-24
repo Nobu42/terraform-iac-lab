@@ -1,20 +1,11 @@
-# AWS VPC 環境設定
+#!/bin/bash
 
-## VPC設定値
-- **Name Tag:** sample-vpc
-- **IPv4 CIDR:** 10.0.0.0/16
-- **Tenancy:** default
-
-
-```
 # デフォルトリージョンを東京に設定
 aws configure set region ap-northeast-1
 
 # 現在の設定を確認
 aws configure get region
-```
-##  VPC再構築コマンド（一括実行用）
-```
+
 # 1. VPCの作成（作成したIDを変数 VPC_ID に格納）
 VPC_ID=$(aws ec2 create-vpc \
     --cidr-block 10.0.0.0/16 \
@@ -32,76 +23,13 @@ aws ec2 create-tags \
 
 # 4. 最終確認（タグや設定が反映されているか）
 aws ec2 describe-vpcs --vpc-ids $VPC_ID
-```
-##  状態確認・デバッグ用
-```
+
 # 名前が「sample-vpc」であるVPCを一覧表示
 aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc
 
 # 全てのVPCのIDと名前、CIDRを一覧で表示（表形式）
 aws ec2 describe-vpcs --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock}' --output table
-```
-# ネットワーク構築
-```
-[ VPC: sample-vpc (10.0.0.0/16) ]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    │
-    │  [ Internet Gateway: sample-igw ] <───> ( Internet )
-    │
-    ▼
-  ┌──────────────────────────────────────────────────────────┐
-  │ [ Route Table: sample-rt-public ]                        │
-  │  - 0.0.0.0/0  =>  sample-igw                             │
-  └──────────────────────────┬───────────────────────────────┘
-                             │
-            ┌────────────────┴────────────────┐
-            ▼                                 ▼
-    [ Public Subnet 01 ]              [ Public Subnet 02 ]
-    ( 10.0.11.0/24 )                  ( 10.0.12.0/24 )
-    [sample-subnet-public01]          [sample-subnet-public02]
-    ┌──────────────────┐              ┌──────────────────┐
-    │ [SG: sg-bastion] │              │ [SG: sg-elb]     │
-    └──────────────────┘              └──────────────────┘
-            │                                 │
-            ▼                                 ▼
-    [ NAT Gateway 01 ]                [ NAT Gateway 02 ]
-    (sample-ngw-01)                   (sample-ngw-02)
-            │                                 │
-━━━━━━━━━━━━│━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━│━━━━━━━━━━━━━━━
-            │                                 │
-  ┌─────────▼───────────────────────┐ ┌─────────▼───────────────────────┐
-  │[Route Table: sample-rt-private01]│ │[Route Table: sample-rt-private02]│
-  │ - 0.0.0.0/0 => sample-ngw-01     │ │ - 0.0.0.0/0 => sample-ngw-02     │
-  └─────────┬───────────────────────┘ └─────────┬───────────────────────┘
-            │                                   │
-            ▼                                   ▼
-    [ Private Subnet 01 ]               [ Private Subnet 02 ]
-    ( 10.0.21.0/24 )                    ( 10.0.22.0/24 )
-    [sample-subnet-private01]           [sample-subnet-private02]
-```
-## サブネット作成
-### 外部サブネット 1
-- **サブネット名:** sample-subnet-public01
-- **AZ:**           ap-northeast-1a
-- **IPv4 CIDR:**    10.0.0.0/20
 
-### 外部サブネット 2
-- **サブネット名:** sample-subnet-public02
-- **AZ:**           ap-northeast-1c
-- **IPv4 CIDR:**    10.0.16.0/20
-
-### 内部サブネット 1
-- **サブネット名:** sample-subnet-private01
-- **AZ:**           ap-northeast-1a
-- **IPv4 CIDR:**    10.0.64.0/20
-
-### 内部サブネット 2
-- **サブネット名:** sample-subnet-private02
-- **AZ:**           ap-northeast-1c
-- **IPv4 CIDR:**    10.0.80.0/20
-
-### 4つのサブネットを一括作成
-```
 # 0. VPC IDの再取得（念のため）
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
 
@@ -120,21 +48,12 @@ aws ec2 create-tags --resources $PRI01_ID --tags Key=Name,Value=sample-subnet-pr
 # 4. 内部サブネット 2 (1c)
 PRI02_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.80.0/20 --availability-zone ap-northeast-1c --query 'Subnet.SubnetId' --output text)
 aws ec2 create-tags --resources $PRI02_ID --tags Key=Name,Value=sample-subnet-private02
-```
-### 作成結果の確認
-```
+
 aws ec2 describe-subnets \
     --filters Name=vpc-id,Values=$VPC_ID \
     --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value | [0], AZ:AvailabilityZone, CIDR:CidrBlock, ID:SubnetId}' \
     --output table
-```
 
-## インターネットゲートウェイの作成
-
-- **名前タグ:** sample-igw
-- **VPC:** sample-vpc
-
-```
 # 1. ターゲットとなるVPCのIDを取得
 VPC_ID=$(aws ec2 describe-vpcs \
     --filters Name=tag:Name,Values=sample-vpc \
@@ -157,27 +76,12 @@ aws ec2 attach-internet-gateway \
     --internet-gateway-id $IGW_ID
 
 echo "Success! Attached IGW ($IGW_ID) to VPC ($VPC_ID)"
-```
 
-### 正常に接続されたかの確認
-
-```
 aws ec2 describe-internet-gateways \
     --internet-gateway-ids $IGW_ID \
     --query 'InternetGateways[0].Attachments[0].State' \
     --output text
-```
 
-##  NATゲートウェイの作成
-
-| 項目 | NATゲートウェイ 1 | NATゲートウェイ 2 |
-| :--- | :--- | :--- |
-| **名前** | sample-ngw-01 | sample-ngw-02 |
-| **サブネット** | sample-subnet-public01 | sample-subnet-public02 |
-| **接続タイプ** | パブリック | パブリック |
-| **Elastic IP** | 自動生成 | 自動生成 |
-
-```
 # 0. サブネットIDの再取得（念のため最新のものを変数に入れる）
 PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
 PUB02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public02 --query 'Subnets[0].SubnetId' --output text)
@@ -210,23 +114,11 @@ NGW02_ID=$(aws ec2 create-nat-gateway \
 aws ec2 create-tags --resources $NGW02_ID --tags Key=Name,Value=sample-ngw-02
 
 echo "NAT Gateways created: $NGW01_ID, $NGW02_ID"
-```
 
-### 作成状態の確認
-```
 aws ec2 describe-nat-gateways \
     --query 'NatGateways[*].{Name:Tags[?Key==`Name`].Value | [0], State:State, Subnet:SubnetId, PublicIP:NatGatewayAddresses[0].PublicIp}' \
     --output table
-```
-## ルートテーブル設定
-| 項目 | パブリック用 (共通) | プライベート用 1 | プライベート用 2 |
-| :--- | :--- | :--- | :--- |
-| **名前タグ** | `sample-rt-public` | `sample-rt-private01` | `sample-rt-private02` |
-| **ルート (local)** | 10.0.0.0/16 (local) | 10.0.0.0/16 (local) | 10.0.0.0/16 (local) |
-| **ルート (外部)** | 0.0.0.0/0 (sample-igw) | 0.0.0.0/0 (sample-ngw-01) | 0.0.0.0/0 (sample-ngw-02) |
-| **関連付けサブネット** | sample-subnet-public01<br>sample-subnet-public02 | sample-subnet-private01 | sample-subnet-private02 |
-### パブリック
-```
+
 # 1. ルートテーブルの作成
 RT_PUB_ID=$(aws ec2 create-route-table \
     --vpc-id $VPC_ID \
@@ -254,16 +146,12 @@ aws ec2 associate-route-table \
     --route-table-id $RT_PUB_ID
 
 echo "Public Route Table configured: $RT_PUB_ID"
-```
-#### 設定の確認
-```
+
 aws ec2 describe-route-tables \
     --route-table-ids $RT_PUB_ID \
     --query 'RouteTables[0].Routes' \
     --output table
-```
-### プライベート
-```
+
 # --- Private Route Table 01 (for AZ-1a) ---
 # 1. ルートテーブルの作成
 RT_PRI01_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID --query 'RouteTable.RouteTableId' --output text)
@@ -285,24 +173,12 @@ aws ec2 create-route --route-table-id $RT_PRI02_ID --destination-cidr-block 0.0.
 aws ec2 associate-route-table --subnet-id $PRI02_ID --route-table-id $RT_PRI02_ID
 
 echo "Private Route Tables configured: $RT_PRI01_ID, $RT_PRI02_ID"
-```
 
-#### 設定の確認
-```
 aws ec2 describe-route-tables \
     --filters Name=vpc-id,Values=$VPC_ID \
     --query 'RouteTables[*].{Name:Tags[?Key==`Name`].Value | [0], Routes:Routes[?DestinationCidrBlock==`0.0.0.0/0`].[GatewayId,NatGatewayId] | [0]}' \
     --output table
-```
-## セキュリティグループ設定
-| 項目 | 踏み台サーバー用 | ロードバランサー用 |
-| :--- | :--- | :--- |
-| **名前タグ** | `sample-sg-bastion` | `sample-sg-elb` |
-| **説明** | for bastion server | for load balancer |
-| **VPC** | `sample-vpc` | `sample-vpc` |
-| **インバウンド 1** | SSH (22) / 0.0.0.0/0 | HTTP (80) / 0.0.0.0/0 |
-| **インバウンド 2** | - | HTTPS (443) / 0.0.0.0/0 |
-```
+
 # --- 1. 踏み台サーバー用 SG 作成 ---
 SG_BASTION_ID=$(aws ec2 create-security-group \
     --group-name sample-sg-bastion \
@@ -339,65 +215,12 @@ aws ec2 authorize-security-group-ingress \
     --cidr 0.0.0.0/0
 
 echo "Security Groups created: Bastion($SG_BASTION_ID), ELB($SG_ELB_ID)"
-```
-### 設定の確認
-```
+
 aws ec2 describe-security-groups \
     --group-ids $SG_BASTION_ID $SG_ELB_ID \
     --query 'SecurityGroups[*].{Name:GroupName, Rules:IpPermissions[*].{Port:FromPort, Range:IpRanges[0].CidrIp}}' \
     --output table
-```
 
-# サーバ構築
-
-## 踏み台サーバー（Bastion）の作成
-
-### キーペア設計
-| 項目 | 設定内容 |
-| :--- | :--- |
-| **名前** | `nobu` |
-| **タイプ** | RSA |
-| **形式** | `.pem` |
-
-### EC2 インスタンス設計：sample-ec2-bastion
-| 項目 | 設定内容 |
-| :--- | :--- |
-| **名前タグ** | `sample-ec2-bastion` |
-| **AMI ID** | `ami-0ff227f0771efc640` |
-| **タイプ** | `t2.micro` |
-| **キーペア** | `nobu` |
-| **サブネット** | `sample-subnet-public01` |
-| **パブリックIP** | 有効 |
-| **セキュリティグループ** | `sample-sg-bastion` |
-
-```
-# CLIでAMI IDを確認するコマンド
-aws ec2 describe-images --query 'Images[*].[ImageId,Name]' --output table
-```
-
-```
-# CLIでAMIを絞り込む方法(--filtersで絞り込み)
-aws ec2 describe-images \
-    --filters "Name=name,Values=amzn2-ami-hvm*" \
-    --query 'Images[*].[ImageId,Name]' \
-    --output table
-```
-BASTION_ID=$(aws ec2 run-instances \
-    --image-id ami-0ff227f0771efc640 \
-    --count 1 \
-    --instance-type t2.micro \
-    --key-name nobu \
-    --security-group-ids $SG_BASTION_ID \
-    --subnet-id $PUB01_ID \
-    --associate-public-ip-address \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-bastion}]' \
-    --query 'Instances[0].InstanceId' \
-    --output text)
-
-echo "Bastion Instance Created: $BASTION_ID"
-```
-# 毎回削除する
-rm -f nobu.pem
 # 1. キーペアの作成と保存
 aws ec2 create-key-pair \
     --key-name nobu \
@@ -410,8 +233,6 @@ chmod 400 nobu.pem
 # 2. 踏み台サーバーの起動
 # --associate-public-ip-address でパブリックIPを有効化します
 # 踏み台サーバーの起動
-# 【重要】--image-id を LocalStack が「コンテナ」として認識できる ID に変更します
-# Amazon Linux 2 の LocalStack 用デフォルト ID: ami-07b643b5e45e
 BASTION_ID=$(aws ec2 run-instances \
     --image-id ami-07b643b5e45e \
     --count 1 \
@@ -425,29 +246,10 @@ BASTION_ID=$(aws ec2 run-instances \
     --output text)
 
 echo "Bastion Instance Created: $BASTION_ID"
-```
-### 起動確認
 
-```
 aws ec2 describe-instances \
     --instance-ids $BASTION_ID \
     --query 'Reservations[0].Instances[0].{Status:State.Name, PublicIP:PublicIpAddress}' \
     --output table
-```
-### 接続確認
-```
-# Ubuntu側でdocker psで以下を確認
-# 0.0.0.0:60577->22/tcp, [::]:60577->22/tcp
 
-# Macのターミナルから実行
-ssh -i nobu.pem -p 60577 root@192.168.40.100
 
-# 1. OSのリリース情報を確認（これで Amazon Linux 2 であることが分かります）
-cat /etc/system-release
-
-# 2. ネットワーク設定を確認（172.17.0.3 が見えるはずです）
-ip addr show eth0
-
-# 3. CPU情報を確認
-cat /proc/cpuinfo | grep "model name"
-```
