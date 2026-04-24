@@ -385,7 +385,7 @@ chmod 400 nobu.pem
 # 踏み台サーバーの起動（IDを ami-00000000 にする）
 ```
 BASTION_ID=$(aws ec2 run-instances \
-    --image-id ami-00000000 \
+    --image-id ami-0ff227f0771efc640 \
     --count 1 \
     --instance-type t2.micro \
     --key-name nobu \
@@ -395,7 +395,6 @@ BASTION_ID=$(aws ec2 run-instances \
     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-bastion}]' \
     --query 'Instances[0].InstanceId' \
     --output text)
-
 echo "Bastion Instance Created: $BASTION_ID"
 ```
 ### 起動確認
