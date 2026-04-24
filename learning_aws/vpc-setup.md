@@ -451,6 +451,7 @@ ip addr show eth0
 # 3. CPU情報を確認
 cat /proc/cpuinfo | grep "model name"
 ```
+### ユーザー作成（本物に似せるため、ec2-userを作成する）
 ```
 # 1. ec2-user という名前のユーザーを作成
 useradd ec2-user
