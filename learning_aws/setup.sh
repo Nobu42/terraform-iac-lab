@@ -232,7 +232,22 @@ chmod 400 nobu.pem
 
 # 2. 踏み台サーバーの起動
 # --associate-public-ip-address でパブリックIPを有効化します
+# 毎回削除する
+rm -f nobu.pem
+# 1. キーペアの作成と保存
+aws ec2 create-key-pair \
+    --key-name nobu \
+    --query 'KeyMaterial' \
+    --output text > nobu.pem
+
+# パーミッションを自分だけが読み取れる設定に変更（必須）
+chmod 400 nobu.pem
+
+# 2. 踏み台サーバーの起動
+# --associate-public-ip-address でパブリックIPを有効化する
 # 踏み台サーバーの起動
+# 【重要】--image-id を LocalStack が「コンテナ」として認識できる ID に変更する
+# Amazon Linux 2 の LocalStack 用デフォルト ID: ami-07b643b5e45e
 BASTION_ID=$(aws ec2 run-instances \
     --image-id ami-07b643b5e45e \
     --count 1 \
@@ -252,4 +267,29 @@ aws ec2 describe-instances \
     --query 'Reservations[0].Instances[0].{Status:State.Name, PublicIP:PublicIpAddress}' \
     --output table
 
+# Webサーバー01 (Private Subnet 1)
+WEB01_ID=$(aws ec2 run-instances \
+    --image-id ami-07b643b5e45e \
+    --count 1 \
+    --instance-type t2.micro \
+    --key-name nobu \
+    --subnet-id $PRI01_ID \
+    --no-associate-public-ip-address \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web01}]' \
+    --query 'Instances[0].InstanceId' \
+    --output text)
 
+# Webサーバー02 (Private Subnet 2)
+WEB02_ID=$(aws ec2 run-instances \
+    --image-id ami-07b643b5e45e \
+    --count 1 \
+    --instance-type t2.micro \
+    --key-name nobu \
+    --subnet-id $PRI02_ID \
+    --no-associate-public-ip-address \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web02}]' \
+    --query 'Instances[0].InstanceId' \
+    --output text)
+
+echo "Created Web01: $WEB01_ID"
+echo "Created Web02: $WEB02_ID"

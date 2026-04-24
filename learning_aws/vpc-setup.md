@@ -484,7 +484,7 @@ echo "ec2-user:password" | chpasswd
 |:---|:---|:---|
 | **名前 (Name)** | `sample-ec2-web01` / `sample-ec2-web02` | 2台構成 |
 | **Amazon Machine Image (AMI)** | `ami-07b643b5e45e` | LocalStack専用 Amazon Linux 2 |
-| **インスタンスタイプ** | `t2.micro` | 書籍の設定に準拠 |
+| **インスタンスタイプ** | `t2.micro` | 適宜 |
 | **キーペア** | `nobu` | 踏み台サーバーと共通 |
 | **VPC** | `sample-vpc` | |
 | **サブネット** | `sample-subnet-private01` (web01用)<br>`sample-subnet-private02` (web02用) | マルチAZ配置 |
