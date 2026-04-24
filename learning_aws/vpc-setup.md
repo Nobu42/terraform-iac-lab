@@ -553,7 +553,7 @@ alias ls-start="ssh nobu@192.168.40.100 'bash ~/start_terraform.sh'"
 alias lsp="ssh nobu@192.168.40.100 'docker ps --filter name=localstack-ec2 --format \"table {{.Names}}\t{{.Ports}}\"'"
 ```
 ### 多段接続用
-mac の.ssh/configに以下を追記
+mac の~/.ssh/configに以下を追記
 ```
 # --- (1) 踏み台サーバー (Bastion) ---
 Host bastion
