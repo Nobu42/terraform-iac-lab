@@ -381,7 +381,7 @@ aws ec2 describe-images \
     --filters "Name=name,Values=amzn2-ami-hvm*" \
     --query 'Images[*].[ImageId,Name]' \
     --output table
-```
+
 BASTION_ID=$(aws ec2 run-instances \
     --image-id ami-0ff227f0771efc640 \
     --count 1 \
@@ -395,6 +395,7 @@ BASTION_ID=$(aws ec2 run-instances \
     --output text)
 
 echo "Bastion Instance Created: $BASTION_ID"
+```
 ```
 # 毎回削除する
 rm -f nobu.pem
@@ -412,7 +413,6 @@ chmod 400 nobu.pem
 # 踏み台サーバーの起動
 # 【重要】--image-id を LocalStack が「コンテナ」として認識できる ID に変更する
 # Amazon Linux 2 の LocalStack 用デフォルト ID: ami-07b643b5e45e
-```
 BASTION_ID=$(aws ec2 run-instances \
     --image-id ami-07b643b5e45e \
     --count 1 \
