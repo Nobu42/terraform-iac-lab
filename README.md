@@ -95,7 +95,6 @@ brew install hashicorp/tap/terraform awscli
 brew install localstack/tap/localstack-cli
 ```
 
-### Ubuntu Server (LocalStack)
 ### Ubuntu Server (LocalStack) のセットアップ
 
 Ubuntu サーバーを LocalStack 専用のホストとして構築し、外部（Mac）からの接続を許可する設定です。
