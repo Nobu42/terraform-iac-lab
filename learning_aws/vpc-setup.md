@@ -1,12 +1,13 @@
 # AWS CLIによる設定作業
 
+# AWS VPC 環境設定
+
 ## VPC設定値
 - **Name Tag:** sample-vpc
 - **IPv4 CIDR:** 10.0.0.0/16
 - **Tenancy:** default
 
 
-## AWS CLI 環境設定
 ```
 # デフォルトリージョンを東京に設定
 aws configure set region ap-northeast-1
