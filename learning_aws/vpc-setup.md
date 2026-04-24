@@ -407,8 +407,7 @@ chmod 400 nobu.pem
 
 # 2. 踏み台サーバーの起動
 # --associate-public-ip-address でパブリックIPを有効化します
-# 踏み台サーバーの起動（IDを ami-00000000 にする）
-```
+# 踏み台サーバーの起動
 BASTION_ID=$(aws ec2 run-instances \
     --image-id ami-0ff227f0771efc640 \
     --count 1 \
@@ -423,6 +422,7 @@ BASTION_ID=$(aws ec2 run-instances \
 echo "Bastion Instance Created: $BASTION_ID"
 ```
 ### 起動確認
+
 ```
 aws ec2 describe-instances \
     --instance-ids $BASTION_ID \
