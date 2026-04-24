@@ -287,3 +287,13 @@ WEB02_ID=$(aws ec2 run-instances \
 
 echo "Created Web01: $WEB01_ID"
 echo "Created Web02: $WEB02_ID"
+
+# Nameタグを指定してIDを自動取得する魔法のコマンド（Mac側）
+BASTION_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-bastion" --query 'Reservations[].Instances[].InstanceId' --output text)
+WEB01_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web01" --query 'Reservations[].Instances[].InstanceId' --output text)
+WEB02_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web02" --query 'Reservations[].Instances[].InstanceId' --output text)
+# Mac側スクリプトの最後に追記するイメージ
+for id in $BASTION_ID $WEB01_ID $WEB02_ID; do
+    echo "Processing $id..."
+    ssh nobu@192.168.40.100 "bash ~/setup_user.sh $id"
+done

@@ -542,3 +542,28 @@ alias ls-start="ssh nobu@192.168.40.100 'bash ~/start_terraform.sh'"
 # lsp でUbuntuのEC2インスタンスに接続するためのポート情報を出力
 alias lsp="ssh nobu@192.168.40.100 'docker ps --filter name=localstack-ec2 --format \"table {{.Names}}\t{{.Ports}}\"'"
 ```
+### 多段接続用
+mac の.ssh/configに以下を追記
+```
+# --- (1) 踏み台サーバー (Bastion) ---
+Host bastion
+    HostName 192.168.40.100
+    User ec2-user
+    Port 32805                # ここを lsp で確認した bastion のポートに！
+    IdentityFile ~/terraform-iac-lab/nobu.pem
+
+# --- (2) Webサーバー 01 ---
+Host web01
+    HostName 172.17.0.4       # ec2_status.sh で確認した IP
+    User ec2-user
+    IdentityFile ~/terraform-iac-lab/nobu.pem
+    ProxyJump bastion         # 最近の SSH では ProxyCommand よりこれが標準！
+
+# --- (3) Webサーバー 02 ---
+Host web02
+    HostName 172.17.0.5       # ec2_status.sh で確認した IP
+    User ec2-user
+    IdentityFile ~/terraform-iac-lab/nobu.pem
+    ProxyJump bastion
+```
+
