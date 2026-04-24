@@ -177,18 +177,24 @@ echo -e "\n LocalStack is Ready!"
 # Corefile 設定
 # /etc/coredns/Corefile に以下を記述します。
 
+# .lab ドメインの設定
 lab:53 {
     hosts /etc/coredns/lab.hosts {
+        # 自分のドメイン以外は次に渡す
         fallthrough
     }
     log
     errors
 }
 
+# それ以外の全般設定（インターネット用）
 .:53 {
     forward . 8.8.8.8 8.8.4.4
+    log
+    errors
     cache 30
 }
+
 ```
 #### サービス化 (/etc/systemd/system/coredns.service)
 ```
