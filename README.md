@@ -158,17 +158,30 @@ pip install localstack
 #### Ubuntu 側で実行する LocalStack 起動用スクリプト
 ```
 #!/bin/bash
-echo "Starting LocalStack (Remote Access Mode)..."
-# 外部アクセスを許可して起動
-HOSTNAME_EXTERNAL=192.168.40.100 GATEWAY_LISTEN=0.0.0.0 localstack start -d
 
-# ヘルスチェック
-echo -n "Waiting for LocalStack to be ready..."
-until curl -s http://localhost:4566/_localstack/health | grep -q '"init": "initialized"'; do
-    echo -n "."
-    sleep 2
-done
-echo -e "\n LocalStack is Ready!"
+# Ubuntuサーバー側で実施するスクリプト。Ubuntuで実行した後はMac（クライアント）からterraformコマンドを実行する。
+# 1. 作業ディレクトリへ移動
+cd ~/terraform-iac-lab
+
+# 2. 仮想環境の有効化
+source venv/bin/activate
+
+# 3. クリーンアップ
+echo " Resetting LocalStack..."
+localstack stop > /dev/null 2>&1
+
+# 4. Macからのアクセスを最適化して起動（EC2/Lambdaのコンテナ実行モードを有効化）
+echo "Starting LocalStack (Resetting to stable mode)..."
+HOSTNAME_EXTERNAL=192.168.40.100 \
+GATEWAY_LISTEN=0.0.0.0 \
+EC2_VM_MANAGER=docker \
+localstack start -d
+
+# 5. 静かに待機（画面を汚さない）
+echo -n " Initializing..."
+source venv/bin/activate
+localstack wait -t 10 > /dev/null 2>&1
+echo -e "\r LocalStack is Ready!    " # \r で上書きして消去
 ```
 
 ### Raspberry Pi (CoreDNS)
