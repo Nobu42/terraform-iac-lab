@@ -363,13 +363,38 @@ aws ec2 describe-security-groups \
 | 項目 | 設定内容 |
 | :--- | :--- |
 | **名前タグ** | `sample-ec2-bastion` |
-| **AMI ID** | `ami-0ff8a91507f77f867` (LocalStack / Amazon Linux 2相当) |
+| **AMI ID** | `ami-0ff227f0771efc640` |
 | **タイプ** | `t2.micro` |
 | **キーペア** | `nobu` |
 | **サブネット** | `sample-subnet-public01` |
 | **パブリックIP** | 有効 |
 | **セキュリティグループ** | `sample-sg-bastion` |
 
+```
+# CLIでAMI IDを確認するコマンド
+aws ec2 describe-images --query 'Images[*].[ImageId,Name]' --output table
+```
+
+```
+# CLIでAMIを絞り込む方法(--filtersで絞り込み)
+aws ec2 describe-images \
+    --filters "Name=name,Values=amzn2-ami-hvm*" \
+    --query 'Images[*].[ImageId,Name]' \
+    --output table
+```
+BASTION_ID=$(aws ec2 run-instances \
+    --image-id ami-0ff227f0771efc640 \
+    --count 1 \
+    --instance-type t2.micro \
+    --key-name nobu \
+    --security-group-ids $SG_BASTION_ID \
+    --subnet-id $PUB01_ID \
+    --associate-public-ip-address \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-bastion}]' \
+    --query 'Instances[0].InstanceId' \
+    --output text)
+
+echo "Bastion Instance Created: $BASTION_ID"
 ```
 # 1. キーペアの作成と保存
 aws ec2 create-key-pair \
