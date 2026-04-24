@@ -478,4 +478,45 @@ chmod 600 /home/ec2-user/.ssh/authorized_keys
 # パスワードを「password」に設定する場合
 echo "ec2-user:password" | chpasswd
 ```
+## Webサーバー構築（EC2）
+
+| 項目 | 設定値 | 備考 |
+|:---|:---|:---|
+| **名前 (Name)** | `sample-ec2-web01` / `sample-ec2-web02` | 2台構成 |
+| **Amazon Machine Image (AMI)** | `ami-07b643b5e45e` | LocalStack専用 Amazon Linux 2 |
+| **インスタンスタイプ** | `t2.micro` | 書籍の設定に準拠 |
+| **キーペア** | `nobu` | 踏み台サーバーと共通 |
+| **VPC** | `sample-vpc` | |
+| **サブネット** | `sample-subnet-private01` (web01用)<br>`sample-subnet-private02` (web02用) | マルチAZ配置 |
+| **パブリックIPの自動割り当て** | **無効化** | プライベートサブネットのため |
+| **セキュリティグループ** | `default` | 必要に応じて後ほど修正 |
+
+```
+# Webサーバー01 (Private Subnet 1)
+WEB01_ID=$(aws ec2 run-instances \
+    --image-id ami-07b643b5e45e \
+    --count 1 \
+    --instance-type t2.micro \
+    --key-name nobu \
+    --subnet-id $PRIV01_ID \
+    --no-associate-public-ip-address \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web01}]' \
+    --query 'Instances[0].InstanceId' \
+    --output text)
+
+# Webサーバー02 (Private Subnet 2)
+WEB02_ID=$(aws ec2 run-instances \
+    --image-id ami-07b643b5e45e \
+    --count 1 \
+    --instance-type t2.micro \
+    --key-name nobu \
+    --subnet-id $PRIV02_ID \
+    --no-associate-public-ip-address \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web02}]' \
+    --query 'Instances[0].InstanceId' \
+    --output text)
+
+echo "Created Web01: $WEB01_ID"
+echo "Created Web02: $WEB02_ID"
+```
 
