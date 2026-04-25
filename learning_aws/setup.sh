@@ -395,6 +395,21 @@ DNS_NAME=$(aws elbv2 describe-load-balancers \
     --query 'LoadBalancers[0].DNSName' \
     --output text)
 
+# ALBの名前からARNを探して変数に入れる
+LB_ARN=$(aws elbv2 describe-load-balancers --names sample-elb --query 'LoadBalancers[0].LoadBalancerArn' --output text)
+TG_ARN=$(aws elbv2 describe-target-groups --names sample-tg --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+# 確認（中身が表示されればOKです）
+echo "LB_ARN is: $LB_ARN"
+echo "TG_ARN is: $TG_ARN"
+
+# 「80番で受けて、sample-tg（$TG_ARN）に転送（Forward）せよ」という命令
+aws elbv2 create-listener \
+    --load-balancer-arn $LB_ARN \
+    --protocol HTTP \
+    --port 80 \
+    --default-actions Type=forward,TargetGroupArn=$TG_ARN
+
 echo "------------------------------------------------"
 echo "Setup Complete!"
 echo "Access URL: http://$DNS_NAME"

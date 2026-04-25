@@ -618,9 +618,31 @@ SG_WEB_ID=$(aws ec2 describe-instances --instance-ids $WEB01_ID --query 'Reserva
 # 穴あけ
 aws ec2 authorize-security-group-ingress --group-id $SG_WEB_ID --protocol tcp --port 3000 --source-group $SG_ELB_ID 2>/dev/null
 
+# 「80番で受けて、sample-tg（$TG_ARN）に転送（Forward）せよ」という命令
+aws elbv2 create-listener \
+    --load-balancer-arn $LB_ARN \
+    --protocol HTTP \
+    --port 80 \
+    --default-actions Type=forward,TargetGroupArn=$TG_ARN
+
 echo "------------------------------------------------"
 echo "Setup Complete!"
 echo "Access URL: http://$(aws elbv2 describe-load-balancers --names sample-elb --query 'LoadBalancers[0].DNSName' --output text)"
 echo "------------------------------------------------"
 ```
+### 疎通確認
+```
+# Ubuntuで以下のファイルを作り,Server起動
+# index.html(中身はHello,World的な）
+python -m SimpleHTTPServer 3000
+```
 
+```
+# Mac側でトンネル掘った後に、curlを打つ
+# Macの4566番を、Ubuntuの4566番（LocalStackの玄関）へ直結する
+ssh -L 4566:localhost:4566 nobu@192.168.40.100
+
+# これは別のターミナルから
+# ALB経由で「hello world」を呼び出す
+curl -v http://localhost:4566 -H "Host: sample-elb.elb.localhost.localstack.cloud"
+```
