@@ -323,3 +323,6 @@ ssh-keygen -R 192.168.40.100          # 踏み台のIP
 ssh-keygen -R 172.17.0.3              # Bastionの内部IP（一応）
 ssh-keygen -R 172.17.0.4              # Web01
 ssh-keygen -R 172.17.0.5              # Web02
+
+# ロードバランサー設定
+
