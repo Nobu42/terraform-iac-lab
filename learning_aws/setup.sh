@@ -95,6 +95,8 @@ NGW01_ID=$(aws ec2 create-nat-gateway \
     --subnet-id $PUB01_ID \
     --allocation-id $ALLOC_ID_01 \
     --query 'NatGateway.NatGatewayId' --output text)
+    # NAT Gatewayが「Available」になるまでここでスクリプトを一時停止する
+    aws ec2 wait nat-gateway-available --nat-gateway-ids $NGW01_ID
 
 # 3. 名前タグ付与
 aws ec2 create-tags --resources $NGW01_ID --tags Key=Name,Value=sample-ngw-01
@@ -292,8 +294,32 @@ echo "Created Web02: $WEB02_ID"
 BASTION_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-bastion" --query 'Reservations[].Instances[].InstanceId' --output text)
 WEB01_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web01" --query 'Reservations[].Instances[].InstanceId' --output text)
 WEB02_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web02" --query 'Reservations[].Instances[].InstanceId' --output text)
-# Mac側スクリプトの最後に追記するイメージ
+
+# インスタンス 3 台すべてが「running」状態になるまで待機
+echo "Waiting for all instances to be running..."
+aws ec2 wait instance-running --instance-ids $BASTION_ID $WEB01_ID $WEB02_ID
+
 for id in $BASTION_ID $WEB01_ID $WEB02_ID; do
     echo "Processing $id..."
     ssh nobu@192.168.40.100 "bash ~/setup_user.sh $id"
 done
+
+# 1. AWS CLIを使って、Nameタグが "sample-ec2-bastion" のIDを取得
+CURRENT_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-bastion" --query 'Reservations[].Instances[].InstanceId' --output text)
+
+# 2. そのIDを元に、Ubuntu側のDockerからポートを取得
+NEW_PORT=$(ssh nobu@192.168.40.100 "docker ps" | grep "$CURRENT_ID" | sed -E 's/.*:([0-9]+)->22.*/\1/')
+
+if [ -n "$NEW_PORT" ]; then
+    sed -i '' -e "/Host bastion/,/Port/ s/Port [0-9]*/Port $NEW_PORT/" ~/.ssh/config
+    echo " Success! Config updated to Port $NEW_PORT (ID: $CURRENT_ID)"
+else
+    echo " Error: Could not find port for ID $CURRENT_ID"
+fi
+
+# 以前の接続情報を掃除（172.17.0.4 や 172.17.0.5 などの競合を防ぐ。本番では注意する）
+echo "Cleaning up old SSH host keys..."
+ssh-keygen -R 192.168.40.100          # 踏み台のIP
+ssh-keygen -R 172.17.0.3              # Bastionの内部IP（一応）
+ssh-keygen -R 172.17.0.4              # Web01
+ssh-keygen -R 172.17.0.5              # Web02
