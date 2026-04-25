@@ -2,8 +2,8 @@
 
 MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、
 AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）キャッチアップ環境です。
-コンテンツのAWS構築演習でAWSの復習
-Terraform演習でTerraformキャッチアップ
+コンテンツのAWS構築演習でAWSの復習。
+Terraform演習でTerraformキャッチアップの予定。
 
 ## 目次
 - [Network Topology](#network-topology)
