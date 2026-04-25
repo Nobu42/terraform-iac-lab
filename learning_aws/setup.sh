@@ -326,3 +326,37 @@ ssh-keygen -R 172.17.0.5              # Web02
 
 # ロードバランサー設定
 
+# ターゲットグループを作成し、その「ARN」を変数に格納する
+TG_ARN=$(aws elbv2 create-target-group \
+    --name sample-tg \
+    --protocol HTTP \
+    --port 3000 \
+    --vpc-id $VPC_ID \
+    --health-check-protocol HTTP \
+    --health-check-path / \
+    --query 'TargetGroups[0].TargetGroupArn' \
+    --output text)
+
+echo "Target Group ARN: $TG_ARN"
+
+aws elbv2 register-targets \
+    --target-group-arn $TG_ARN \
+    --targets Id=$WEB01_ID Id=$WEB02_ID
+
+
+# sample-sg-elb の ID を取得（まだ変数に入れていない場合）
+SG_ELB_ID=$(aws ec2 describe-security-groups \
+    --filters Name=group-name,Values=sample-sg-elb \
+    --query 'SecurityGroups[0].GroupId' --output text)
+
+# ロードバランサー（ALB）本体の作成
+LB_ARN=$(aws elbv2 create-load-balancer \
+    --name sample-elb \
+    --subnets $PUB01_ID $PUB02_ID \
+    --security-groups $SG_ELB_ID \
+    --scheme internet-facing \
+    --type application \
+    --query 'LoadBalancers[0].LoadBalancerArn' \
+    --output text)
+
+echo "Load Balancer ARN: $LB_ARN"
