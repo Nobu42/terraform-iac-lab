@@ -1,3 +1,4 @@
+# WebServer (EC2)　作成
 | 項目 | 設定値 | 備考 |
 |:---|:---|:---|
 | **名前 (Name)** | `sample-ec2-web01` / `sample-ec2-web02` | 2台構成 |
