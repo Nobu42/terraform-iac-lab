@@ -1,41 +1,40 @@
 " ==========================================
-" 1. プラグイン管理 (最小限に絞り込み)
+" 1. プラグイン管理
 " ==========================================
 call plug#begin('~/.vim/plugged')
 
-" 言語別のシンタックス（色付け）強化
-Plug 'sheerun/vim-polyglot'
-
-" ステータスラインの視認性向上
-Plug 'itchyny/lightline.vim'
+Plug 'sheerun/vim-polyglot' " 言語別シンタックス
+Plug 'itchyny/lightline.vim' " ステータスライン
+Plug 'jiangmiao/auto-pairs'  " ★【追加】スマートな括弧補完
+Plug 'hashivim/vim-terraform' " ★【追加】Terraform専用プラグイン（超便利です）
 
 call plug#end()
 
 " ==========================================
-" 2. 基本設定 (Unix標準の挙動)
+" 2. 基本設定 (モダンな開発スタイルに調整)
 " ==========================================
 set nocompatible
 set encoding=utf-8
 set fileencoding=utf-8
-set number            " 行番号を表示（デバッグ時に必須）
-set cursorline        " カーソル行を強調
-set showmatch         " 括弧の対応を表示
-set laststatus=2      " ステータスラインを常に表示
-set wildmenu          " コマンド補完を視覚的に表示
-set title             " 端末のタイトルをファイル名に変更
+set number
+set cursorline
+set showmatch
+set laststatus=2
+set wildmenu
+set title
 
-" 検索設定 (grepに近い挙動)
-set ignorecase        " 小文字検索で大文字小文字を無視
-set smartcase         " 大文字を含めたら区別する
-set incsearch         " インクリメンタルサーチ
-set hlsearch          " 検索結果をハイライト
+" 検索設定
+set ignorecase
+set smartcase
+set incsearch
+set hlsearch
 nnoremap <Esc><Esc> :nohlsearch<CR>
 
-" 編集設定 (Unix標準のタブ幅8を意識)
-set tabstop=8         " タブ幅は基本8（Unix/Linuxカーネルの流儀）
-set shiftwidth=8
-set softtabstop=0     " 常に本物のタブを使う設定
-set noexpandtab       " スペースではなくタブを使用（Linux開発の掟）
+" 編集設定 (グローバル設定を「スペース4」に変更)
+set expandtab       " タブの代わりにスペースを使用（現代の開発の標準）
+set tabstop=4       " タブを表示するときの幅
+set shiftwidth=4    " 自動インデント時の幅
+set softtabstop=4
 set autoindent
 set smartindent
 set nowrap
@@ -48,66 +47,41 @@ filetype plugin indent on
 syntax on
 
 " ==========================================
-" 3. Linuxプログラミング連携
+" 3. 言語別設定 (ここが Terraform 対策の肝です)
 " ==========================================
 
-" --- マニュアル(man)連携 ---
-" Kキーでカーソル下の単語の man を Vim 内で開く
-runtime ftplugin/man.vim
-nnoremap K :Man <C-R><C-W><CR>
+" Terraform (HashiCorp標準: スペース2つ)
+autocmd FileType terraform setlocal expandtab tabstop=2 shiftwidth=2 softtabstop=2
+" .tfファイルを確実にterraformタイプとして認識させる
+autocmd BufRead,BufNewFile *.tf set filetype=terraform
 
-" --- タグジャンプ (ctags) ---
-" 実行前にシェルで `ctags -R .` を叩いておく必要がある
-" Ctrl + ] で定義へジャンプ、Ctrl + t で戻る
-set tags=./tags;,tags;
+" Terraform保存時の自動フォーマット (vim-terraformの機能を利用)
+let g:terraform_fmt_on_save = 1
+let g:terraform_align = 1 " = の位置を綺麗に揃えてくれる
 
-" --- Make / Quickfix 連携 ---
-" :make でコンパイルし、エラーがあればその行にジャンプする
-" Makefileがあるディレクトリで実行する
-nnoremap <Leader>m :make<CR>
-nnoremap <Leader>cn :cnext<CR> " 次のエラーへ
-nnoremap <Leader>cp :cprevious<CR> " 前のエラーへ
-
-" --- 実行ショートカット ---
-autocmd FileType c nnoremap <buffer> <Leader>r :!gcc -Wall % -o %< && ./%<<CR>
-autocmd FileType python nnoremap <buffer> <Leader>r :!python3 %<CR>
-autocmd FileType sh nnoremap <buffer> <Leader>r :!bash %<CR>
-
-" ==========================================
-" 4. 言語別設定
-" ==========================================
-
-" C言語 (Linuxカーネルスタイル)
+" C言語 (Linuxカーネルスタイルを維持したい場合のみタブ8)
 autocmd FileType c setlocal noexpandtab tabstop=8 shiftwidth=8
 
-" Python (PEP8準拠のためPythonのみスペース4)
-autocmd FileType python setlocal expandtab tabstop=4 shiftwidth=4 textwidth=88
-
-" Terraform (HashiCorp標準はスペース2つ)
-autocmd FileType terraform setlocal expandtab tabstop=2 shiftwidth=2 softtabstop=2
-
-" 保存時に自動で terraform fmt を実行する
-autocmd BufWritePost *.tf silent! !terraform fmt %
-" 実行後に画面が崩れないように再描画
-autocmd BufWritePost *.tf silent! redraw!
+" Python (PEP8)
+autocmd FileType python setlocal expandtab tabstop=4 shiftwidth=4
 
 " ==========================================
-" 5. 入力補助・スニペット
+" 4. 入力補助・ショートカット
 " ==========================================
 
 " 保存時に行末の空白を削除
 autocmd BufWritePre * :%s/\s\+$//e
 
-" 括弧の補完
-inoremap {<CR> {<CR>}<ESC>O
-inoremap [ []<Left>
-inoremap ( ()<Left>
-inoremap " ""<Left>
-inoremap ' ''<Left>
+" マニュアル連携
+runtime ftplugin/man.vim
+nnoremap K :Man <C-R><C-W><CR>
 
-" 短縮入力 (iabbr)
-iabbr _sh #!/bin/bash
-iabbr _py #!/usr/bin/env python3
+" 実行ショートカット (Leaderキー = \)
+autocmd FileType c nnoremap <buffer> <Leader>r :!gcc -Wall % -o %< && ./%<<CR>
+autocmd FileType python nnoremap <buffer> <Leader>r :!python3 %<CR>
+autocmd FileType sh nnoremap <buffer> <Leader>r :!bash %<CR>
+" Terraformのバリデーションを実行
+autocmd FileType terraform nnoremap <buffer> <Leader>r :!terraform validate<CR>
 
 " main関数の展開
 inoremap ;;m int main(int argc, char *argv[])<CR>{<CR>return 0;<CR>}<Esc>O

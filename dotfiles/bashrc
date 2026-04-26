@@ -28,18 +28,23 @@ export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/homebrew/opt/tcl-tk/lib/pkgconfig"
 # カレントディレクトリ名とユーザー名を表示
 PS1='\u \W\$ '
 
-# Created by `pipx` on 2025-12-07 09:41:39
-export PATH="$PATH:/Users/nobu/.local/bin"
-# Ubuntuがネットワーク内にいるか確認して行き先を自動で決める
-if ping -c 1 -t 1 192.168.40.100 > /dev/null 2>&1; then
-    # Ubuntuが見つかる場合（自宅にいる時）
+# Terraform や AWS CLI でこのエンドポイントを強制的に使うためのエイリアス
+# localstack.lab が名前解決できるか（＝自宅にいるか）を確認
+# 【自宅モード】
+# localstack.lab という名前が解決できない場合でも、IPで直接指定する
+if ping -c 1 192.168.40.100 > /dev/null 2>&1; then
+    # Ubuntu（サーバー）がいる場合
     export LOCALSTACK_HOST=192.168.40.100
     export AWS_ENDPOINT_URL="http://192.168.40.100:4566"
+    echo " Home Lab Mode: 192.168.40.100 connected."
 else
-    # Ubuntuが見つからない場合（外出先やMac単体で動かす時）
+    # 自分のMacだけで完結する場合
     export LOCALSTACK_HOST=localhost
     export AWS_ENDPOINT_URL="http://localhost:4566"
+    echo " Solo Mode: localhost connected."
 fi
 
-# どちらの場合でも「aws」だけで動くようにエイリアスを設定
 alias aws='aws --endpoint-url=$AWS_ENDPOINT_URL'
+
+alias ls-start="ssh nobu@192.168.40.100 'bash ~/start_terraform.sh'"
+alias lsp="ssh nobu@192.168.40.100 'docker ps --filter name=localstack-ec2 --format \"table {{.Names}}\t{{.Ports}}\"'"
