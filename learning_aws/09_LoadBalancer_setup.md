@@ -1,4 +1,21 @@
 ## ロードバランサー
+### ロードバランサー設計・設定値一覧
+
+| カテゴリ | 項目 | 設定値 / 内容 |
+| :--- | :--- | :--- |
+| **Load Balancer** | 名前 | `sample-elb` |
+| | 種類 | Application Load Balancer (ALB) |
+| | スキーム | `internet-facing` |
+| | 配置サブネット | `sample-subnet-public01`, `02` |
+| | セキュリティグループ | `sample-sg-elb` |
+| **Listener** | プロトコル / ポート | HTTP : 80 |
+| | アクション | ターゲットグループ (`sample-tg`) へ転送 |
+| **Target Group** | 名前 | `sample-tg` |
+| | ターゲットタイプ | instance (EC2) |
+| | プロトコル / ポート | HTTP : 3000 |
+| | 登録ターゲット | `sample-ec2-web01`, `sample-ec2-web02` |
+| | ヘルスチェック | HTTP : `/` (Port: 3000) |
+| **Security** | セキュリティ連動 | `sample-sg-elb` からの Port 3000 通信を許可 |
 
 ```
 #!/bin/bash
