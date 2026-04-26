@@ -11,17 +11,6 @@ AWS クラウドインフラをシミュレートする IaC（Infrastructure as 
 Terraform演習でTerraformキャッチアップの予定。
 このあとAnsible、Kubernetesも追加予定。随時更新。
 
-## 目次
-- [Network Topology](#network-topology)
-- [コンセプト](#コンセプト)
-  - [~/.bashrc (環境自動判別)](#bashrc)
-  - [~/.vimrc (開発環境設定)](#vimrc)
-
-- [インストールとセットアップ](#インストールとセットアップ)
-  - [Mac (Client Side)](#mac-client-side)
-  - [Ubuntu Server (LocalStack)](#ubuntu-server-localstack)
-  - [Raspberry Pi (CoreDNS)](#raspberry-pi-coredns)
-
 ##  コンテンツ (演習内容)
 
 ### 1. AWS 構築 (LocalStack AWS CLI)
