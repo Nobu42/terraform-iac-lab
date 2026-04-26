@@ -22,10 +22,10 @@ Terraform演習でTerraformキャッチアップの予定。
   - [Ubuntu Server (LocalStack)](#ubuntu-server-localstack)
   - [Raspberry Pi (CoreDNS)](#raspberry-pi-coredns)
 
-## 🚀 コンテンツ (演習内容)
+##  コンテンツ (演習内容)
 
-### 1. AWS 構築演習 (LocalStack CLI)
-`learning_aws/` ディレクトリにて、シェルスクリプトによる AWS 構成管理を学習します。
+### 1. AWS 構築 (LocalStack AWS CLI)
+`learning_aws/` ディレクトリにて、シェルスクリプトによる AWS 構成管理を実践。
 
 * **[01] [VPC 構築](./learning_aws/01_vpc_setup.md)** - ネットワークの土台
 * **[02] [サブネット設計](./learning_aws/02_subnet_setup.md)** - Public/Private の切り分け
