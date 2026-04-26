@@ -1,25 +1,16 @@
-## サブネット作成
-### 外部サブネット 1
-- **サブネット名:** sample-subnet-public01
-- **AZ:**           ap-northeast-1a
-- **IPv4 CIDR:**    10.0.0.0/20
+## サブネット設計一覧
 
-### 外部サブネット 2
-- **サブネット名:** sample-subnet-public02
-- **AZ:**           ap-northeast-1c
-- **IPv4 CIDR:**    10.0.16.0/20
+| 区分 | サブネット名 | 可用性ゾーン (AZ) | IPv4 CIDR |
+| :--- | :--- | :--- | :--- |
+| **外部 (Public) 1** | sample-subnet-public01 | ap-northeast-1a | 10.0.0.0/20 |
+| **外部 (Public) 2** | sample-subnet-public02 | ap-northeast-1c | 10.0.16.0/20 |
+| **内部 (Private) 1** | sample-subnet-private01 | ap-northeast-1a | 10.0.64.0/20 |
+| **内部 (Private) 2** | sample-subnet-private02 | ap-northeast-1c | 10.0.80.0/20 |
 
-### 内部サブネット 1
-- **サブネット名:** sample-subnet-private01
-- **AZ:**           ap-northeast-1a
-- **IPv4 CIDR:**    10.0.64.0/20
+---
 
-### 内部サブネット 2
-- **サブネット名:** sample-subnet-private02
-- **AZ:**           ap-northeast-1c
-- **IPv4 CIDR:**    10.0.80.0/20
+### 4つのサブネットを一括作成 (Shell/02_subnet_setup.sh)
 
-### 4つのサブネットを一括作成
 ```
 #!/bin/bash
 
