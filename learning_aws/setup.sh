@@ -345,7 +345,7 @@ TG_ARN=$(aws elbv2 create-target-group \
 
 echo "Target Group ARN: $TG_ARN"
 
-# --- 3. Webサーバーを登録 ---
+# --- 3. Webサーバーを登録（2台まとめて） ---
 aws elbv2 register-targets \
     --target-group-arn $TG_ARN \
     --targets Id=$WEB01_ID Id=$WEB02_ID
@@ -367,8 +367,7 @@ LB_ARN=$(aws elbv2 create-load-balancer \
 
 echo "Load Balancer ARN: $LB_ARN"
 
-
-# 1. リスナーの作成（80番ポートの受付開始）
+# --- 6. リスナーの作成（80番ポートの受付開始） ---
 echo "Creating Listener..."
 aws elbv2 create-listener \
     --load-balancer-arn $LB_ARN \
@@ -376,39 +375,25 @@ aws elbv2 create-listener \
     --port 80 \
     --default-actions Type=forward,TargetGroupArn=$TG_ARN
 
-# 2. セキュリティグループの連動（LBからWebサーバーへの3000番を許可）
-# ※Webサーバーが使っているSG名を「sample-sg-web」と仮定しています。適宜直してください。
-SG_WEB_ID=$(aws ec2 describe-security-groups \
-    --filters Name=group-name,Values=sample-sg-web \
-    --query 'SecurityGroups[0].GroupId' --output text)
+# --- 7. セキュリティグループの連動（穴あけ） ---
+# 【修正ポイント！】web01が現在使っているSG（default）のIDを取得
+SG_WEB_ID=$(aws ec2 describe-instances \
+    --instance-ids $WEB01_ID \
+    --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+    --output text)
 
 echo "Allowing traffic from LB SG ($SG_ELB_ID) to Web SG ($SG_WEB_ID) on Port 3000..."
 aws ec2 authorize-security-group-ingress \
     --group-id $SG_WEB_ID \
     --protocol tcp \
     --port 3000 \
-    --source-group $SG_ELB_ID
+    --source-group $SG_EL_ID 2>/dev/null  # 既に開いていればエラーが出るので無視
 
-# 3. 最後にアクセス用URLを表示
+# --- 8. 最後にアクセス用URLを表示 ---
 DNS_NAME=$(aws elbv2 describe-load-balancers \
     --load-balancer-arns $LB_ARN \
     --query 'LoadBalancers[0].DNSName' \
     --output text)
-
-# ALBの名前からARNを探して変数に入れる
-LB_ARN=$(aws elbv2 describe-load-balancers --names sample-elb --query 'LoadBalancers[0].LoadBalancerArn' --output text)
-TG_ARN=$(aws elbv2 describe-target-groups --names sample-tg --query 'TargetGroups[0].TargetGroupArn' --output text)
-
-# 確認（中身が表示されればOKです）
-echo "LB_ARN is: $LB_ARN"
-echo "TG_ARN is: $TG_ARN"
-
-# 「80番で受けて、sample-tg（$TG_ARN）に転送（Forward）せよ」という命令
-aws elbv2 create-listener \
-    --load-balancer-arn $LB_ARN \
-    --protocol HTTP \
-    --port 80 \
-    --default-actions Type=forward,TargetGroupArn=$TG_ARN
 
 echo "------------------------------------------------"
 echo "Setup Complete!"
