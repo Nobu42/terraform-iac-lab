@@ -22,9 +22,31 @@ Terraform演習でTerraformキャッチアップの予定。
   - [Ubuntu Server (LocalStack)](#ubuntu-server-localstack)
   - [Raspberry Pi (CoreDNS)](#raspberry-pi-coredns)
 
-## コンテンツ
-- [AWS構築演習 (LocalStack)](./learning_aws/vpc-setup.md) : ネットワークからEC2構築まで
-- [Terraform演習](./execises/) : 基本構文からLambda構築まで
+## 🚀 コンテンツ (演習内容)
+
+### 1. AWS 構築演習 (LocalStack CLI)
+`learning_aws/` ディレクトリにて、シェルスクリプトによる AWS 構成管理を学習します。
+
+* **[01] [VPC 構築](./learning_aws/01_vpc_setup.md)** - ネットワークの土台
+* **[02] [サブネット設計](./learning_aws/02_subnet_setup.md)** - Public/Private の切り分け
+* **[03] [IGW 設定](./learning_aws/03_internetgateway_setup.md)** - 外の世界への出口
+* **[04] [NAT Gateway](./learning_aws/04_nat_gateway_setup.md)** - プライベート空間からの通信確保
+* **[05] [ルートテーブル](./learning_aws/05_route_table_setup.md)** - パケットの通り道を定義
+* **[06] [セキュリティグループ](./learning_aws/06_security_group_setup.md)** - 仮想ファイアウォール
+* **[07] [踏み台サーバー](./learning_aws/07_bastion_server_setup.md)** - セキュアな SSH 入口
+* **[08] [Web サーバー (EC2)](./learning_aws/08_web_server_setup.md)** - 内部サーバー構築と多段 SSH
+* **[09] [ロードバランサー (ALB)](./learning_aws/LoadBalancer_setup.md)** - サービス公開と負荷分散
+
+> **一括構築:** [`./learning_aws/All_Setup.sh`](./learning_aws/All_Setup.sh) を実行することで、全工程を自動で再現可能です。
+
+---
+
+### 2. Terraform 演習
+`execises/` ディレクトリにて、HCL によるプロビジョニングを学習します。
+
+* **Basic**: [プロバイダー設定とリソースの基本](./execises/basic/)
+* **Syntax**: [変数（Variables）や出力（Outputs）の扱い](./execises/basic_sintax/)
+* **Lambda**: [Lambda + IAM + DynamoDB のサーバーレス構成](./execises/localstack_test/)
 
 ## Network Topology
 
@@ -47,92 +69,27 @@ Terraform演習でTerraformキャッチアップの予定。
 ## LocalStack内部ネットワーク
 ```
 [ VPC: sample-vpc (10.0.0.0/16) ]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     │
-    │  [ Internet Gateway: sample-igw ] <───> ( Internet )
-    │
+    │  [ Internet Gateway ] <───> ( Internet )
     ▼
-  ┌──────────────────────────────────────────────────────────┐
-  │ [ Route Table: sample-rt-public ]                        │
-  │  - 0.0.0.0/0  =>  sample-igw                             │
-  └──────────────────────────┬───────────────────────────────┘
-                             │
-            ┌────────────────┴────────────────┐
-            ▼                                 ▼
-    [ Public Subnet 01 ]              [ Public Subnet 02 ]
-    ( 10.0.11.0/24 )                  ( 10.0.12.0/24 )
-    [sample-subnet-public01]          [sample-subnet-public02]
-    ┌──────────────────┐              ┌──────────────────┐
-    │ [SG: sg-bastion] │              │ [SG: sg-elb]     │
-    └──────────────────┘              └──────────────────┘
-            │                                 │
-            ▼                                 ▼
-    [ NAT Gateway 01 ]                [ NAT Gateway 02 ]
-    (sample-ngw-01)                   (sample-ngw-02)
-            │                                 │
-━━━━━━━━━━━━│━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━│━━━━━━━━━━━━━━━
-            │                                 │
-  ┌─────────▼───────────────────────┐ ┌─────────▼───────────────────────┐
-  │[Route Table: sample-rt-private01]│ │[Route Table: sample-rt-private02]│
-  │ - 0.0.0.0/0 => sample-ngw-01     │ │ - 0.0.0.0/0 => sample-ngw-02     │
-  └─────────┬───────────────────────┘ └─────────┬───────────────────────┘
-            │                                   │
-            ▼                                   ▼
-    [ Private Subnet 01 ]               [ Private Subnet 02 ]
-    ( 10.0.21.0/24 )                    ( 10.0.22.0/24 )
-    [sample-subnet-private01]           [sample-subnet-private02]
+  ┌──────────────────────────────────────────────────┐
+  │ [ Public Subnets ] (Bastion / ALB)               │
+  │ 10.0.0.0/20 & 10.0.16.0/20                       │
+  └──────────┬──────────────────────────────┬────────┘
+             ▼                              ▼
+      [ NAT Gateway 01 ]            [ NAT Gateway 02 ]
+━━━━━━━━━━━━━│━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━│━━━━━━━━━
+             ▼                              ▼
+  ┌──────────────────────────────────────────────────┐
+  │ [ Private Subnets ] (Web Servers)                │
+  │ 10.0.64.0/20 & 10.0.80.0/20                      │
+  └──────────────────────────────────────────────────┘
 ```
 
 ## コンセプト
 - **ハイブリッド設計:** 自宅の Ubuntu (192.168.40.100) と外出先の Mac を自動判別し、エンドポイントを自動切り替え。
 
-- **最適化された編集環境:** Terraform の自動整形や C/Python の実行環境を Vim に統合。
-
-### bashrc
-ハイブリッド構成のため、Mac 側の ~/.bashrc に以下の判定ロジックを追記しています。
-```
-# Home Lab モード判定 (localstack.lab が名前解決できるかを確認)
-if nslookup localstack.lab > /dev/null 2>&1; then
-    # 【自宅モード】
-    export LOCALSTACK_HOST=localstack.lab
-    export AWS_ENDPOINT_URL="[http://localstack.lab:4566](http://localstack.lab:4566)"
-    echo "🏠 Home Lab Mode: localstack.lab connected."
-else
-    # 【外出先/ソロモード】
-    export LOCALSTACK_HOST=localhost
-    export AWS_ENDPOINT_URL="http://localhost:4566"
-    echo "🚀 Solo Mode: localhost connected."
-fi
-
-# AWS CLI で LocalStack エンドポイントを強制的に使うためのエイリアス
-alias aws='aws --endpoint-url=$AWS_ENDPOINT_URL'
-```
-### vimrc
-Terraform 開発をサポート機能を~/.vimrcに追記
-```
-call plug#begin('~/.vim/plugged')
-Plug 'sheerun/vim-polyglot'   " 言語別シンタックス
-Plug 'itchyny/lightline.vim'  " ステータスライン
-Plug 'jiangmiao/auto-pairs'   " 括弧の自動補完
-Plug 'hashivim/vim-terraform' " Terraform専用
-call plug#end()
-
-set number
-set cursorline
-set expandtab
-set tabstop=4
-set shiftwidth=4
-set smartindent
-
-" Terraform設定: 保存時に自動フォーマット
-autocmd FileType terraform setlocal expandtab tabstop=2 shiftwidth=2 softtabstop=2
-let g:terraform_fmt_on_save = 1
-let g:terraform_align = 1
-
-" 実行ショートカット (Leaderキー(\) + r)
-autocmd FileType python nnoremap <buffer> <Leader>r :!python3 %<CR>
-autocmd FileType sh nnoremap <buffer> <Leader>r :!bash %<CR>
-autocmd FileType terraform nnoremap <buffer> <Leader>r :!terraform validate<CR>
 ```
 
 ## インストールとセットアップ

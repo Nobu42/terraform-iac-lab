@@ -8,6 +8,25 @@
 | **サブネット** | `sample-subnet-private01` (web01用)<br>`sample-subnet-private02` (web02用) | マルチAZ配置 |
 | **パブリックIPの自動割り当て** | **無効化** | プライベートサブネットのため |
 | **セキュリティグループ** | `default` | 必要に応じて後ほど修正 |
+### 鍵の作成
+```
+# Enter file in which to save... → 何も打たずに Enter
+# Enter passphrase... → 何も打たずに Enter
+# Enter same passphrase... → 何も打たずに Enter
+ssh-keygen -t ed25519
+
+# Ubuntuへ転送
+ssh-copy-id nobu@192.168.40.100
+```
+
+### macの~/.bashrc追記
+
+```
+# ls-startでlocalstackスタート！
+alias ls-start="ssh nobu@192.168.40.100 'bash ~/start_terraform.sh'"
+# lsp でUbuntuのEC2インスタンスに接続するためのポート情報を出力
+alias lsp="ssh nobu@192.168.40.100 'docker ps --filter name=localstack-ec2 --format \"table {{.Names}}\t{{.Ports}}\"'"
+```
 ### UbuntuServerのホームディレクトリに以下を配置しておく
 ```
 #!/bin/bash
