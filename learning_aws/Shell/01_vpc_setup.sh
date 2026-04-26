@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 1. VPCの作成とタグ付与を同時に実行
-# 作成時にタグを付けることで、管理ミスを防ぎます
+# VPCの作成とタグ付与を同時に実行
+# 作成時にタグを付ける
 VPC_ID=$(aws ec2 create-vpc \
     --cidr-block 10.0.0.0/16 \
     --instance-tenancy default \
@@ -13,7 +13,7 @@ VPC_ID=$(aws ec2 create-vpc \
 echo "New VPC ID: $VPC_ID"
 
 # 3. DNSサポートの有効化（ALBやRDSを使う際に重要！）
-# ※LocalStackでもこれを有効にしておくと、本番環境に近い挙動になります
+# ※LocalStackでもこれを有効にしておくと、本番環境に近い挙動になる
 aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames '{"Value":true}'
 aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-support '{"Value":true}'
 

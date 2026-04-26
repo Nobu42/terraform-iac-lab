@@ -15,7 +15,7 @@ aws configure get region
 ```
 
 ## VPC構築 (vpc_create.sh)
-> **Note:** LocalStack環境では `--region ap-northeast-1` を明示するか、`aws configure` で事前に設定しておく必要があります。
+> **Note:** LocalStack環境では `--region ap-northeast-1` を明示するか、`aws configure` で事前に設定しておく必要がある。
 
 ```bash
 #!/bin/bash
