@@ -1,17 +1,3 @@
-## サブネット設計一覧
-
-| 区分 | サブネット名 | 可用性ゾーン (AZ) | IPv4 CIDR |
-| :--- | :--- | :--- | :--- |
-| **外部 (Public) 1** | sample-subnet-public01 | ap-northeast-1a | 10.0.0.0/20 |
-| **外部 (Public) 2** | sample-subnet-public02 | ap-northeast-1c | 10.0.16.0/20 |
-| **内部 (Private) 1** | sample-subnet-private01 | ap-northeast-1a | 10.0.64.0/20 |
-| **内部 (Private) 2** | sample-subnet-private02 | ap-northeast-1c | 10.0.80.0/20 |
-
----
-
-### 4つのサブネットを一括作成 (Shell/02_subnet_setup.sh)
-
-```
 #!/bin/bash
 
 # 0. VPC IDの再取得
@@ -55,11 +41,7 @@ PRI02_ID=$(aws ec2 create-subnet \
 
 echo "Subnets created: Public($PUB01_ID, $PUB02_ID), Private($PRI01_ID, $PRI02_ID)"
 
-# 作成結果の確認
-
 aws ec2 describe-subnets \
     --filters Name=vpc-id,Values=$VPC_ID \
     --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value | [0], AZ:AvailabilityZone, CIDR:CidrBlock, ID:SubnetId}' \
     --output table
-```
-
