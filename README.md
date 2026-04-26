@@ -15,8 +15,9 @@ Terraform演習でTerraformキャッチアップの予定。
 
 ### 1. AWS 構築 (LocalStack AWS CLI)
 `learning_aws/` ディレクトリにて、シェルスクリプトによる AWS 構成管理を実践。
-* **[vimrc](./dotfiles/vimrc)**
-* **[bashrc](./dotfiles/bashrc)**
+* **[00] [編集環境]**
+    * **[vimrc](./dotfiles/vimrc)**
+    * **[bashrc](./dotfiles/bashrc)**
 * **[01] [VPC 構築](./learning_aws/01_vpc_setup.md)** - ネットワークの土台
 * **[02] [サブネット設計](./learning_aws/02_subnet_setup.md)** - Public/Private の切り分け
 * **[03] [IGW 設定](./learning_aws/03_internetgateway_setup.md)** - 外の世界への出口
