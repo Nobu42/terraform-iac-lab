@@ -1,24 +1,3 @@
-## 踏み台サーバー（Bastion）の作成
-
-### キーペア設計
-| 項目 | 設定内容 |
-| :--- | :--- |
-| **名前** | `nobu` |
-| **タイプ** | RSA |
-| **形式** | `.pem` |
-
-### EC2 インスタンス設計：sample-ec2-bastion
-| 項目 | 設定内容 |
-| :--- | :--- |
-| **名前タグ** | `sample-ec2-bastion` |
-| **AMI ID** | `ami-0ff227f0771efc640` |
-| **タイプ** | `t2.micro` |
-| **キーペア** | `nobu` |
-| **サブネット** | `sample-subnet-public01` |
-| **パブリックIP** | 有効 |
-| **セキュリティグループ** | `sample-sg-bastion` |
-
-```
 #!/bin/bash
 
 # --- 0. 必要なIDを再取得 ---
@@ -53,4 +32,3 @@ aws ec2 wait instance-running --instance-ids $BASTION_ID
 PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $BASTION_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 echo "Bastion is ready at $PUBLIC_IP"
 echo "Check your docker ps for the SSH port mapping (e.g., 60577)."
-```
