@@ -1,9 +1,27 @@
 # LocalStack 対応AMI 作成
 
-# ステップ1：Packerテンプレート（HCL）の作成
+## 1. Packerのインストール (UbuntuServer)
+```
+# HashiCorpのリポジトリを追加
+curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
 
-まず、dotfiles/ ディレクトリ等に amazon-linux-2.pkr.hcl を作成する。
-ここで amazonlinux:2 のDockerイメージをベースに指定する。
+# Packerのインストール
+sudo apt-get update && sudo apt-get install packer -y
+```
+
+## 2. Packerテンプレートの作成
+
+```
+# Ubuntuにログイン後
+cd ~
+mkdir -p packer_build
+cd packer_build
+
+# ここでファイルを作成（vi や nano で）
+vi amazon-linux-2.pkr.hcl
+```
+
 ```
 # amazon-linux-2.pkr.hcl
 packer {
@@ -23,47 +41,56 @@ source "docker" "amazon-linux" {
 build {
   sources = ["source.docker.amazon-linux"]
 
-  # ここで yum を使って必要なものをインストール
+  # yumの整備と必要なツールのインストール
   provisioner "shell" {
     inline = [
       "yum update -y",
-      "yum install -y yum-utils shadow-utils", # 基本ツール
+      "yum install -y yum-utils shadow-utils",
       "yum install -y mysql",                 # MySQLクライアント
-      "yum install -y tar gzip git",          # Railsデプロイに必要
+      "yum install -y tar gzip git",          # Railsデプロイ用
       "echo 'Custom AMI with yum and mysql' > /etc/ami-info"
     ]
   }
 
-  # 作成したコンテナをLocalStackが読み込める形式で保存する設定
+  # LocalStackが参照するDockerイメージ名を指定
   post-processor "docker-tag" {
-    repository = "custom-amazon-linux"
+    repository = "localstack-custom-ami"
     tag        = ["latest"]
   }
 }
 ```
 
-## ステップ2：Packerでイメージをビルド
-
-ターミナルでビルドを実行します。これにより、yumがインストール済みのDockerイメージがローカルに生成される。
-
+## 3. イメージのビルド
 ```
-# ビルド実行
+# 初期化
 packer init .
+
+# ビルド（Dockerイメージの生成）
 packer build amazon-linux-2.pkr.hcl
 ```
-## ステップ3：LocalStackにAMIとして登録する
 
-### 作成したイメージのIDを確認
+## 4. LocalStackへのAMI登録
+
+### 4.1 イメージの確認
 ```
-docker images custom-amazon-linux
+docker images localstack-custom-ami
 ```
 
-### LocalStackにAMIを登録
+### 4.2 AMIの登録コマンド
 ```
-# AMIとして登録（LocalStack特有の作法）
 aws --endpoint-url=http://localhost:4566 ec2 register-image \
     --name "custom-yum-ami" \
-    --block-device-mappings "DeviceName=/dev/sda1,Ebs={SnapshotId=snap-12345}" \
+    --image-location "localstack-custom-ami:latest" \
     --architecture x86_64 \
     --root-device-name /dev/sda1
 ```
+
+## 5. 登録完了の確認とAMI IDの取得
+```
+# 登録されたAMIのID（ami-xxxxxxxx）を確認
+aws --endpoint-url=http://localhost:4566 ec2 describe-images --owners self
+```
+このコマンドの出力に含まれる ImageId を、All_Setup.sh 内にある aws ec2 run-instances の
+--image-id パラメータに使用すれば、最初から yum が使える状態で起動する。
+
+
