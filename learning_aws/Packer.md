@@ -82,7 +82,16 @@ aws --endpoint-url=http://localhost:4566 ec2 register-image \
     --name "custom-yum-ami" \
     --image-location "localstack-custom-ami:latest" \
     --architecture x86_64 \
-    --root-device-name /dev/sda1
+    --root-device-name /dev/sda1 \
+    --region ap-northeast-1
+```
+```
+# 登録後の確認コマンド
+aws --endpoint-url=http://localhost:4566 ec2 describe-images \
+    --owners self \
+    --region ap-northeast-1 \
+    --query "Images[*].{Name:Name,ImageId:ImageId}" \
+    --output table
 ```
 
 ## 5. 登録完了の確認とAMI IDの取得
