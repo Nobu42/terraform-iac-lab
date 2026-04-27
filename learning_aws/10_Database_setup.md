@@ -77,3 +77,10 @@ aws --endpoint-url=http://localhost:4566 rds describe-db-subnet-groups --db-subn
 
 - **LocalStackでの挙動:** -  LocalStack上でRDSを起動する場合、実際にはDockerコンテナが立ち上がるため、describe-db-instances で Available になるまで数分かかる場合があります。
 
+```
+# DB用のセキュリティグループ作成（未作成なら）
+# DB_SG_ID=$(aws ec2 create-security-group --group-name sample-sg-db --description "Security group for DB" --vpc-id $VPC_ID ...)
+
+# WebサーバーのSGからのアクセスを許可
+# aws ec2 authorize-security-group-ingress --group-id $DB_SG_ID --protocol tcp --port 3306 --source-group $WEB_SG_ID
+```
