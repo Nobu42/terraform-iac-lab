@@ -1,7 +1,7 @@
 #!/bin/bash
 # Webサーバー01 (Private Subnet 1)
 WEB01_ID=$(aws ec2 run-instances \
-    --image-id ami-690472a3 \
+    --image-id ami-07b643b5e45e \
     --count 1 \
     --instance-type t2.micro \
     --key-name nobu \
@@ -13,7 +13,7 @@ WEB01_ID=$(aws ec2 run-instances \
 
 # Webサーバー02 (Private Subnet 2)
 WEB02_ID=$(aws ec2 run-instances \
-    --image-id ami-690472a3 \
+    --image-id ami-07b643b5e45e \
     --count 1 \
     --instance-type t2.micro \
     --key-name nobu \

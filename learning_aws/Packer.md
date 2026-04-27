@@ -78,11 +78,15 @@ docker images localstack-custom-ami
 
 ### 4.2 AMIの登録コマンド
 ```
+AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test \
 aws --endpoint-url=http://localhost:4566 ec2 register-image \
     --name "custom-yum-ami" \
+    --description "My custom Amazon Linux 2 with yum" \
     --image-location "localstack-custom-ami:latest" \
     --architecture x86_64 \
     --root-device-name /dev/sda1 \
+    --block-device-mappings "DeviceName=/dev/sda1,Ebs={SnapshotId=snap-12345}" \
+    --virtualization-type hvm \
     --region ap-northeast-1
 ```
 ```
