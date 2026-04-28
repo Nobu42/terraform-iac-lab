@@ -1,5 +1,9 @@
 #!/bin/bash
 # Webサーバー01 (Private Subnet 1)
+# --- 0. 必要なサブネットIDを再取得 ---
+PRI01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private01 --query 'Subnets[0].SubnetId' --output text)
+PRI02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private02 --query 'Subnets[0].SubnetId' --output text)
+
 WEB01_ID=$(aws ec2 run-instances \
     --image-id ami-07b643b5e45e \
     --count 1 \
