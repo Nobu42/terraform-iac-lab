@@ -55,8 +55,6 @@ PRI02_ID=$(aws ec2 create-subnet \
 
 echo "Subnets created: Public($PUB01_ID, $PUB02_ID), Private($PRI01_ID, $PRI02_ID)"
 
-# 作成結果の確認
-
 aws ec2 describe-subnets \
     --filters Name=vpc-id,Values=$VPC_ID \
     --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value | [0], AZ:AvailabilityZone, CIDR:CidrBlock, ID:SubnetId}' \
