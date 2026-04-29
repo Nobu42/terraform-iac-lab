@@ -11,9 +11,9 @@ AWS クラウドインフラをシミュレートする IaC（Infrastructure as 
 Terraform演習でTerraformキャッチアップの予定。
 このあとAnsible、Kubernetesも追加予定。随時更新。
 
-##  コンテンツ (演習内容)
+## Learning AWS
 
-### 1. AWS 構築 (LocalStack AWS CLI)
+## 1. AWS 構築 (LocalStack AWS CLI)
 `learning_aws/` ディレクトリにて、シェルスクリプトによる AWS 構成管理を実践。
 * **[00] [編集環境]**
     * **[vimrc](./dotfiles/vimrc)**
@@ -35,10 +35,10 @@ Terraform演習でTerraformキャッチアップの予定。
 
 ---
 
-## コンセプト
+### コンセプト
 - **ハイブリッド設計:** 自宅の Ubuntu (192.168.40.100) と外出先の Mac を自動判別し、エンドポイントを自動切り替え。
 
-## Network Topology
+### Network Topology
 
 ```text
       [ MacBook Air (M4) ] <--- クライアント (外出先 / 自宅)
@@ -87,6 +87,8 @@ Terraform演習でTerraformキャッチアップの予定。
   └────────────────────────┘       └────────────────────────┘
 ```
 
+## 2. 2. Learning Terraform
 
+- **追記予定**
 
 
