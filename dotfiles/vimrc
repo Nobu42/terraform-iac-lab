@@ -11,7 +11,7 @@ Plug 'hashivim/vim-terraform' " ★【追加】Terraform専用プラグイン（
 call plug#end()
 
 " ==========================================
-" 2. 基本設定 (モダンな開発スタイルに調整)
+" 2. 基本設定
 " ==========================================
 set nocompatible
 set encoding=utf-8
