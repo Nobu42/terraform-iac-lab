@@ -1,20 +1,21 @@
+# learning_awsのコンテンツを動かすときはmacの~/.ssh/configに忘れず記載！
 # --- (1) 踏み台サーバー (Bastion) ---
 Host bastion
-    HostName 192.168.40.100
+    HostName 192.168.40.100     # UbuntuServerのIP
     User ec2-user
     Port 13125
     IdentityFile ~/terraform-iac-lab/learning_aws/nobu.pem
 
 # --- (2) Webサーバー 01 ---
 Host web01
-    HostName 172.17.0.4         # 昨夜の表のPrivateIP
+    HostName 172.17.0.4         # localstackのstatusで確認したPrivateIP
     User ec2-user
     IdentityFile ~/terraform-iac-lab/learning_aws/nobu.pem
     ProxyJump bastion
 
 # --- (3) Webサーバー 02 ---
 Host web02
-    HostName 172.17.0.5         # 昨夜の表のPrivateIP
+    HostName 172.17.0.5         # localstackのstatusで確認したPrivateIP
     User ec2-user
     IdentityFile ~/terraform-iac-lab/learning_aws/nobu.pem
     ProxyJump bastion
