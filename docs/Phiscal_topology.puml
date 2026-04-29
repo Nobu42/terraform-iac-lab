@@ -1,0 +1,40 @@
+@startuml
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+title Home Lab Environment - Infrastructure
+
+' デバイスの定義
+node "MacBook Air (M4)" as mac #ivory {
+    [Terminal / Terraform]
+}
+
+node "Raspberry Pi 4" as rpi #honeydew {
+    package "DNS Service" {
+        [CoreDNS] as coredns
+    }
+    note bottom of rpi : IP: 192.168.40.208
+}
+
+node "Ubuntu Server" as ubuntu #aliceblue {
+    package "AWS Simulation" {
+        [LocalStack] as localstack
+    }
+    note bottom of ubuntu : IP: 192.168.40.100
+}
+
+cloud "Internal Private Network" as net
+
+' 通信の流れ
+mac --> coredns : 1. DNS Query (localstack.lab)
+coredns ..> mac : 2. Resolved to 192.168.40.100
+
+mac -- net : 3. AWS CLI / Terraform
+net --> localstack : (Target: 192.168.40.100)
+
+' ネットワークの接続
+rpi -- net
+ubuntu -- net
+
+@enduml
