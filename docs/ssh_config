@@ -3,7 +3,7 @@
 Host bastion
     HostName 192.168.40.100     # UbuntuServerのIP
     User ec2-user
-    Port 13125
+    Port 13125                  # このポート番号は毎回変わるがシェルスクリプト(sed)で自動で書き換え
     IdentityFile ~/terraform-iac-lab/learning_aws/nobu.pem
 
 # --- (2) Webサーバー 01 ---
