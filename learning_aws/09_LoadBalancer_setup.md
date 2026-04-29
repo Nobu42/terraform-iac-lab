@@ -117,26 +117,44 @@ echo "3. Access URL in your browser:"
 echo "   http://sample-elb.elb.localhost.localstack.cloud:4566"
 echo "------------------------------------------------"
 ```
-### 疎通確認
 
+## 4. 疎通確認手順
+
+構築したALBを経由して、Private Subnet内のWebサーバーにアクセスできるか確認する。
+
+### 4.1 Webサーバー側での準備（ダミーサーバー起動）
+Webサーバー（例：Web01）にログインし、テスト用のHTMLファイルを作成して簡易サーバーを起動する。
+
+```bash
+# Webサーバー内で実行
+echo "Hello from WebServer 01" > index.html
+python3 -m http.server 3000
 ```
-# Ubuntuで以下のファイルを作り,Server起動
-# index.html(中身はHello,World的な）
-python -m SimpleHTTPServer 3000
+
+### 4.2 Mac側でのトンネル疎通（L7ルーティング）
+
+LocalStackのALBは名前解決（Hostヘッダー）を利用するため、以下の手順でMacからの経路を確保する。
+
+#### ① SSHトンネルの構築
+
+Macの4566番ポートを、LocalStackが動いているUbuntuの4566番へ転送する。
 ```
-```
-# Mac側でトンネル掘った後に、Macでcurlを打つ
-# Macの4566番を、Ubuntuの4566番（LocalStackの玄関）へ直結する
-# このコマンドを打った後はこのターミナルはUbuntuと接続されたままになるので以降は別のターミナルから実行する。
+# Macの別ターミナルで実行（維持すること）
 ssh -L 4566:localhost:4566 nobu@192.168.40.100
-
-# パスワードを聞かれるので、Macのログインパスワードを入れる。（ブラウザ確認用）
-echo "127.0.0.1 sample-elb.elb.localhost.localstack.cloud" | sudo tee -a /etc/hosts
-
-# ALB経由で「hello world」を呼び出す
-curl -v http://localhost:4566 -H "Host: sample-elb.elb.localhost.localstack.cloud"
-
-# Macのブラウザで確認（Web01サーバーのホームディレクトリのindex.htmlが表示される）
-# http://sample-elb.elb.localhost.localstack.cloud:4566
 ```
+
+#### ② Macのhosts設定
+
+ブラウザからの名前解決を有効にするため、ALBのDNS名をlocalhostに向ける。
+```
+# Macで実行
+echo "127.0.0.1 sample-elb.elb.localhost.localstack.cloud" | sudo tee -a /etc/hosts
+```
+
+#### ④ ブラウザでの最終確認
+
+以下のURLをブラウザで開き、「Hello from WebServer 01」が表示されれば成功。
+※ WebServer01にssh web01でログインし、上記メッセージのindex.htmlを作成しておく。
+
+http://sample-elb.elb.localhost.localstack.cloud:4566
 
