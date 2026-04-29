@@ -2,30 +2,17 @@
 
 ```
 #!/bin/bash
-# Webサーバー01 & 02 セットアップ
-
+# Webサーバー01 (Private Subnet 1)
 # --- 0. 必要なサブネットIDを再取得 ---
 PRI01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private01 --query 'Subnets[0].SubnetId' --output text)
 PRI02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private02 --query 'Subnets[0].SubnetId' --output text)
 
-# 採用する AMI (Amazon Linux 2023)
-LIST_AMI="ami-0b4a1b07f9ca13717"
-
-# 起動時に実行するコマンド（MySQLクライアントのインストール）
-USER_DATA_SCRIPT="#!/bin/bash
-dnf update -y
-dnf install -y mariadb105"  # AL2023ではmariadb105-clientが標準的です
-
-echo "Launching Web instances with $LIST_AMI..."
-
-# Webサーバー01 (Private Subnet 1)
 WEB01_ID=$(aws ec2 run-instances \
-    --image-id $LIST_AMI \
+    --image-id ami-07b643b5e45e \
     --count 1 \
     --instance-type t2.micro \
     --key-name nobu \
     --subnet-id $PRI01_ID \
-    --user-data "$USER_DATA_SCRIPT" \
     --no-associate-public-ip-address \
     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web01}]' \
     --query 'Instances[0].InstanceId' \
@@ -33,12 +20,11 @@ WEB01_ID=$(aws ec2 run-instances \
 
 # Webサーバー02 (Private Subnet 2)
 WEB02_ID=$(aws ec2 run-instances \
-    --image-id $LIST_AMI \
+    --image-id ami-07b643b5e45e \
     --count 1 \
     --instance-type t2.micro \
     --key-name nobu \
     --subnet-id $PRI02_ID \
-    --user-data "$USER_DATA_SCRIPT" \
     --no-associate-public-ip-address \
     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web02}]' \
     --query 'Instances[0].InstanceId' \
@@ -47,23 +33,24 @@ WEB02_ID=$(aws ec2 run-instances \
 echo "Created Web01: $WEB01_ID"
 echo "Created Web02: $WEB02_ID"
 
-# IDの自動取得
+# Nameタグを指定してIDを自動取得する魔法のコマンド（Mac側）
 BASTION_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-bastion" --query 'Reservations[].Instances[].InstanceId' --output text)
 WEB01_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web01" --query 'Reservations[].Instances[].InstanceId' --output text)
 WEB02_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web02" --query 'Reservations[].Instances[].InstanceId' --output text)
 
-# 待機
+# インスタンス 3 台すべてが「running」状態になるまで待機
 echo "Waiting for all instances to be running..."
 aws ec2 wait instance-running --instance-ids $BASTION_ID $WEB01_ID $WEB02_ID
 
-# 各インスタンスの初期設定（鍵の注入など）
 for id in $BASTION_ID $WEB01_ID $WEB02_ID; do
     echo "Processing $id..."
     ssh nobu@192.168.40.100 "bash ~/setup_user.sh $id"
 done
 
-# Bastion のポート取得と Mac の config 更新
+# 1. AWS CLIを使って、Nameタグが "sample-ec2-bastion" のIDを取得
 CURRENT_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-bastion" --query 'Reservations[].Instances[].InstanceId' --output text)
+
+# 2. そのIDを元に、Ubuntu側のDockerからポートを取得
 NEW_PORT=$(ssh nobu@192.168.40.100 "docker ps" | grep "$CURRENT_ID" | sed -E 's/.*:([0-9]+)->22.*/\1/')
 
 if [ -n "$NEW_PORT" ]; then
@@ -73,15 +60,16 @@ else
     echo " Error: Could not find port for ID $CURRENT_ID"
 fi
 
-# SSH接続情報の掃除
+# 以前の接続情報を掃除（172.17.0.4 や 172.17.0.5 などの競合を防ぐ。本番では注意する）
 echo "Cleaning up old SSH host keys..."
-ssh-keygen -R 192.168.40.100
-ssh-keygen -R 172.17.0.3
-ssh-keygen -R 172.17.0.4
-ssh-keygen -R 172.17.0.5
+ssh-keygen -R 192.168.40.100          # 踏み台のIP
+ssh-keygen -R 172.17.0.3              # Bastionの内部IP（一応）
+ssh-keygen -R 172.17.0.4              # Web01
+ssh-keygen -R 172.17.0.5              # Web02
 
 aws ec2 describe-instances \
     --instance-ids $BASTION_ID \
     --query 'Reservations[0].Instances[0].{Status:State.Name, PublicIP:PublicIpAddress}' \
     --output table
+
 ```
