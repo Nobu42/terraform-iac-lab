@@ -1,0 +1,20 @@
+# --- (1) 踏み台サーバー (Bastion) ---
+Host bastion
+    HostName 192.168.40.100
+    User ec2-user
+    Port 13125
+    IdentityFile ~/terraform-iac-lab/learning_aws/nobu.pem
+
+# --- (2) Webサーバー 01 ---
+Host web01
+    HostName 172.17.0.4         # 昨夜の表のPrivateIP
+    User ec2-user
+    IdentityFile ~/terraform-iac-lab/learning_aws/nobu.pem
+    ProxyJump bastion
+
+# --- (3) Webサーバー 02 ---
+Host web02
+    HostName 172.17.0.5         # 昨夜の表のPrivateIP
+    User ec2-user
+    IdentityFile ~/terraform-iac-lab/learning_aws/nobu.pem
+    ProxyJump bastion
