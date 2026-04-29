@@ -27,7 +27,7 @@ Terraform、Ansible、Kubernetes も順次追加予定。
 * **[07] [踏み台サーバー](./learning_aws/07_bastion_server_setup.md)** - セキュアな SSH 入口
 * **[08] [Web サーバー (EC2)](./learning_aws/08_web_server_setup.md)** - 内部サーバー構築と多段 SSH
 * **[09] [ロードバランサー (ALB)](./learning_aws/09_LoadBalancer_setup.md)** - サービス公開と負荷分散
-* **[10] [データベース (RDS)](./learning_aws/10_Database_setuup.md)** - マルチAZによるデータ冗長化
+* **[10] [データベース (RDS)](./learning_aws/10_Database_setup.md)** - マルチAZによるデータ冗長化
 
 > **一括構築:** [`./learning_aws/All_Setup.sh`](./learning_aws/All_Setup.sh) を実行することで、全工程を自動で再現可能です。
 
