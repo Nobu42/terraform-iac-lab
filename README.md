@@ -5,15 +5,13 @@
 ![Raspberry Pi](https://img.shields.io/badge/-Raspberry%20Pi-C51A4A?style=for-the-badge&logo=Raspberry-Pi)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9430F?style=for-the-badge&logo=ubuntu&logoColor=white)
 
-MacBook Air (M4) と自宅の Raspberry Pi 4（DNS）、Ubuntu サーバーを連携させ、
-AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）キャッチアップ環境です。
-コンテンツのAWS構築演習でAWSの復習、
-Terraform演習でTerraformキャッチアップの予定。
-このあとAnsible、Kubernetesも追加予定。随時更新。
+MacBook Air (M4) と自宅の Raspberry Pi 4（CoreDNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境。
+SAA（Solutions Architect Associate）取得後の知識をアウトプットし、実務レベルの構築スキルを定着させることを目的としています。
 
-## Learning AWS
+Terraform、Ansible、Kubernetes も順次追加予定。
 
-## 1. AWS 構築 (LocalStack AWS CLI)
+## 1. Learning AWS (AWS CLI & Shell Script)
+
 `learning_aws/` ディレクトリにて、シェルスクリプトによる AWS 構成管理を実践。
 * **[00] [編集環境]**
     * **[vimrc](./dotfiles/vimrc)**
@@ -29,14 +27,17 @@ Terraform演習でTerraformキャッチアップの予定。
 * **[07] [踏み台サーバー](./learning_aws/07_bastion_server_setup.md)** - セキュアな SSH 入口
 * **[08] [Web サーバー (EC2)](./learning_aws/08_web_server_setup.md)** - 内部サーバー構築と多段 SSH
 * **[09] [ロードバランサー (ALB)](./learning_aws/09_LoadBalancer_setup.md)** - サービス公開と負荷分散
-* **[10] [データベース (RDS)](./learning_aws/10_Database_setuup.md)** -
+* **[10] [データベース (RDS)](./learning_aws/10_Database_setuup.md)** - マルチAZによるデータ冗長化
 
 > **一括構築:** [`./learning_aws/All_Setup.sh`](./learning_aws/All_Setup.sh) を実行することで、全工程を自動で再現可能です。
 
 ---
 
-### コンセプト
-- **ハイブリッド設計:** 自宅の Ubuntu (192.168.40.100) と外出先の Mac を自動判別し、エンドポイントを自動切り替え。
+### コンセプト：ハイブリッド・ラボ
+
+- **柔軟なエンドポイント:** 外出先の Mac (M4) と自宅の Ubuntu (192.168.40.100) を自動判別し、LocalStack への接続先を動的に切り替え。
+
+- **自宅DNS連携:** Raspberry Pi 4 (CoreDNS) により、localstack.lab などの独自ドメインで AWS シミュレーション環境を運用。
 
 ### Network Topology
 
