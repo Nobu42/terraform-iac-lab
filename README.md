@@ -90,10 +90,10 @@ brew install localstack/tap/localstack-cli
 
 ### Ubuntu Server (LocalStack) のセットアップ
 
-Ubuntu サーバーを LocalStack 専用のホストとして構築し、外部（Mac）からの接続を許可する設定です。
+Ubuntu サーバーを LocalStack 専用のホストとして構築し、外部（Mac）からの接続を許可する設定。
 
 #### 1. 必要なパッケージのインストール
-Docker がインストールされていることを前提として、`localstack-cli` と Python 環境を整備します。
+Docker がインストールされていることを前提として、`localstack-cli` と Python 環境を整備する。
 
 ```bash
 # Python3 と venv のインストール
