@@ -21,5 +21,5 @@ aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-support '{"Value":tru
 # ID、名前、状態、DNS設定を一覧で表示
 aws ec2 describe-vpcs \
     --vpc-ids $VPC_ID \
-    --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock, DNSHost:EnableDnsHostnames}' \
+    --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock, DNSHost:EnableDnsHostnames.Value}' \
     --output table
