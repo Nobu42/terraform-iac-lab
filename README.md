@@ -39,7 +39,7 @@ Terraform、Ansible、Kubernetes も順次追加予定。
 
 - **自宅DNS連携:** Raspberry Pi 4 (CoreDNS) により、localstack.lab などの独自ドメインで AWS シミュレーション環境を運用。
 
-### Network Topology
+### Network Topology (Physical)
 
 ```text
       [ MacBook Air (M4) ] <--- クライアント (外出先 / 自宅)
@@ -57,7 +57,7 @@ Terraform、Ansible、Kubernetes も順次追加予定。
                |                                |
                +---[ Internal Private Network ]--+
 ```
-## LocalStack内部ネットワーク
+## LocalStack Logical Architecture (VPC)
 ```
 [ VPC: sample-vpc (10.0.0.0/16) ]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -88,7 +88,7 @@ Terraform、Ansible、Kubernetes も順次追加予定。
   └────────────────────────┘       └────────────────────────┘
 ```
 
-## 2. 2. Learning Terraform
+## Learning Terraform
 
 - **追記予定**
 
