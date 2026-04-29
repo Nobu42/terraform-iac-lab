@@ -31,7 +31,7 @@
 #!/bin/bash
 
 # --- 1. 必要な ID を再取得して変数に叩き込む ---
-# タグ名から動的に取得することで、環境再構築後でもそのまま動くようにしています
+# タグ名から動的に取得することで、環境再構築後でもそのまま動くようにしている
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
 PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
 PUB02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public02 --query 'Subnets[0].SubnetId' --output text)
@@ -39,7 +39,7 @@ WEB01_ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=sample-ec2-
 WEB02_ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=sample-ec2-web02 --query 'Reservations[0].Instances[0].InstanceId' --output text)
 
 # --- 2. ターゲットグループを作成 ---
-# Webサーバーが3000番で待機している想定の設定です
+# Webサーバーが3000番で待機している想定の設定
 TG_ARN=$(aws elbv2 create-target-group \
     --name sample-tg \
     --protocol HTTP \
@@ -108,7 +108,7 @@ echo "------------------------------------------------"
 echo " Setup Complete!"
 echo "------------------------------------------------"
 echo "1. Run this in a separate terminal to tunnel LocalStack:"
-echo "   ssh -L 4566:localhost:4566 nobu@192.168.40.100"
+echo "   ssh -L 4566:192.168.40.100:4566 nobu@192.168.40.100"
 echo ""
 echo "2. Add this to your Mac /etc/hosts (if not already done):"
 echo "   127.0.0.1 sample-elb.elb.localhost.localstack.cloud"
@@ -118,12 +118,12 @@ echo "   http://sample-elb.elb.localhost.localstack.cloud:4566"
 echo "------------------------------------------------"
 ```
 ### 疎通確認
+
 ```
 # Ubuntuで以下のファイルを作り,Server起動
 # index.html(中身はHello,World的な）
 python -m SimpleHTTPServer 3000
 ```
-
 ```
 # Mac側でトンネル掘った後に、Macでcurlを打つ
 # Macの4566番を、Ubuntuの4566番（LocalStackの玄関）へ直結する
