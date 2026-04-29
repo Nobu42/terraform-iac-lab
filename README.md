@@ -27,17 +27,15 @@ Terraform演習でTerraformキャッチアップの予定。
 * **[07] [踏み台サーバー](./learning_aws/07_bastion_server_setup.md)** - セキュアな SSH 入口
 * **[08] [Web サーバー (EC2)](./learning_aws/08_web_server_setup.md)** - 内部サーバー構築と多段 SSH
 * **[09] [ロードバランサー (ALB)](./learning_aws/09_LoadBalancer_setup.md)** - サービス公開と負荷分散
+* **[10] [データベース (RDS)](./learning_aws/10_Database_setuup.md)** -
 
 > **一括構築:** [`./learning_aws/All_Setup.sh`](./learning_aws/All_Setup.sh) を実行することで、全工程を自動で再現可能です。
 
 ---
 
 ### 2. Terraform 演習
-`execises/` ディレクトリにて、HCL によるプロビジョニングを学習します。
 
-* **Basic**: [プロバイダー設定とリソースの基本](./execises/basic/)
-* **Syntax**: [変数（Variables）や出力（Outputs）の扱い](./execises/basic_sintax/)
-* **Lambda**: [Lambda + IAM + DynamoDB のサーバーレス構成](./execises/localstack_test/)
+- **追記予定**
 
 ## Network Topology
 
