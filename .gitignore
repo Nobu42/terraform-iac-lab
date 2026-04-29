@@ -6,5 +6,5 @@
 tags
 git_commit.sh
 .gitignore
-.*
+.DS_Store
 
