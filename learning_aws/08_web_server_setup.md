@@ -1,5 +1,31 @@
 # WebServer 作成
 
+## 1. インフラ設計
+
+### EC2 インスタンス共通設計
+| 項目 | 設定内容 |
+| :--- | :--- |
+| **AMI ID** | `ami-07b643b5e45e` (Amazon Linux 2 / LocalStack用) |
+| **インスタンスタイプ** | `t2.micro` |
+| **キーペア** | `nobu` |
+| **パブリックIP** | 無効（Private Subnet配置のため） |
+| **セキュリティグループ** | `default` (VPC内通信許可) |
+| **OS ユーザー** | `ec2-user` |
+
+### 個別識別情報
+| サーバー名 | 名前タグ | 配置サブネット | 用途 |
+| :--- | :--- | :--- | :--- |
+| **Webサーバー 01** | `sample-ec2-web01` | `sample-subnet-private01` | アプリケーション実行 (AZ-a) |
+| **Webサーバー 02** | `sample-ec2-web02` | `sample-subnet-private02` | アプリケーション実行 (AZ-c) |
+
+## 自動化ロジック
+
+本スクリプトでは、LocalStack環境特有の動的な挙動に対応するため、以下の自動化機能を実装している。
+
+* **動的ポート・IP追従**: 起動のたびに変わるBastionの転送ポート、およびWebサーバーのプライベートIPをAWS CLIで取得。
+* **SSH Config 自動更新**: `sed` コマンドを用い、Macローカルの `~/.ssh/config` を動的に書き換える。これにより、常に `ssh web01` などのショートカット名で接続が可能。
+* **SSH Key 競合回避**: 新規起動時の `Host key verification failed` を防ぐため、`ssh-keygen -R` による既知のホスト情報の自動削除を実施。
+
 ```
 #!/bin/bash
 # Webサーバー01 (Private Subnet 1)
@@ -71,5 +97,10 @@ aws ec2 describe-instances \
     --instance-ids $BASTION_ID \
     --query 'Reservations[0].Instances[0].{Status:State.Name, PublicIP:PublicIpAddress}' \
     --output table
+# スクリプトの最後にこれを足すと、.ssh/configが常に最新に！
+NEW_IP01=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web01" --query 'Reservations[].Instances[].PrivateIpAddress' --output text)
+NEW_IP02=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web02" --query 'Reservations[].Instances[].PrivateIpAddress' --output text)
 
+sed -i '' -e "/Host web01/,/HostName/ s/HostName .*/HostName $NEW_IP01/" ~/.ssh/config
+sed -i '' -e "/Host web02/,/HostName/ s/HostName .*/HostName $NEW_IP02/" ~/.ssh/config
 ```

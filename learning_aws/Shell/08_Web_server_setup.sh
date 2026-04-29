@@ -68,3 +68,10 @@ aws ec2 describe-instances \
     --instance-ids $BASTION_ID \
     --query 'Reservations[0].Instances[0].{Status:State.Name, PublicIP:PublicIpAddress}' \
     --output table
+
+# スクリプトの最後にこれを足すと、.ssh/configが常に最新に！
+NEW_IP01=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web01" --query 'Reservations[].Instances[].PrivateIpAddress' --output text)
+NEW_IP02=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-web02" --query 'Reservations[].Instances[].PrivateIpAddress' --output text)
+
+sed -i '' -e "/Host web01/,/HostName/ s/HostName .*/HostName $NEW_IP01/" ~/.ssh/config
+sed -i '' -e "/Host web02/,/HostName/ s/HostName .*/HostName $NEW_IP02/" ~/.ssh/config
