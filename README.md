@@ -6,7 +6,7 @@
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-E9430F?style=for-the-badge&logo=ubuntu&logoColor=white)
 
 MacBook Air (M4) と自宅の Raspberry Pi 4（CoreDNS）、Ubuntu サーバーを連携させ、AWS クラウドインフラをシミュレートする IaC（Infrastructure as Code）学習環境。
-SAA（Solutions Architect Associate）取得後の知識をアウトプットし、実務レベルの構築スキルを定着させることを目的としています。
+資格AWS SAA（Solutions Architect Associate）取得後の知識をアウトプットし、構築スキルを定着させることを目的としています。
 
 Terraform、Ansible、Kubernetes も順次追加予定。
 
