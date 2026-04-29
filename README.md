@@ -18,7 +18,7 @@ Terraform演習でTerraformキャッチアップの予定。
 * **[00] [編集環境]**
     * **[vimrc](./dotfiles/vimrc)**
     * **[bashrc](./dotfiles/bashrc)**
-    * **[Install_Setup](./dotfiles/Install_Setup.md)
+    * **[Install_Setup](./dotfiles/Install_Setup.md)**
 
 * **[01] [VPC 構築](./learning_aws/01_vpc_setup.md)** - ネットワークの土台
 * **[02] [サブネット設計](./learning_aws/02_subnet_setup.md)** - Public/Private の切り分け
@@ -35,8 +35,8 @@ Terraform演習でTerraformキャッチアップの予定。
 
 ---
 
-
-- **追記予定**
+## コンセプト
+- **ハイブリッド設計:** 自宅の Ubuntu (192.168.40.100) と外出先の Mac を自動判別し、エンドポイントを自動切り替え。
 
 ## Network Topology
 
@@ -87,8 +87,6 @@ Terraform演習でTerraformキャッチアップの予定。
   └────────────────────────┘       └────────────────────────┘
 ```
 
-## コンセプト
-- **ハイブリッド設計:** 自宅の Ubuntu (192.168.40.100) と外出先の Mac を自動判別し、エンドポイントを自動切り替え。
 
 
 
