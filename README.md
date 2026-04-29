@@ -87,7 +87,7 @@ Terraform、Ansible、Kubernetes も順次追加予定。
   │   [ DB Master ]        <──同期──>  [ DB Standby ]        │
   └────────────────────────┘       └────────────────────────┘
 ```
-
+![Physical](./docs/Physical.png?v=2)
 ![Network Architecture](./docs/Network_Architecture.png?v=2)
 
 
