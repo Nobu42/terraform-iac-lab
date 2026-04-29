@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- 1. 必要な ID を再取得して変数に叩き込む ---
-# タグ名から動的に取得することで、環境再構築後でもそのまま動くようにしています
+# タグ名から動的に取得することで、環境再構築後でもそのまま動くようにしている
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
 PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
 PUB02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public02 --query 'Subnets[0].SubnetId' --output text)
@@ -9,7 +9,7 @@ WEB01_ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=sample-ec2-
 WEB02_ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=sample-ec2-web02 --query 'Reservations[0].Instances[0].InstanceId' --output text)
 
 # --- 2. ターゲットグループを作成 ---
-# Webサーバーが3000番で待機している想定の設定です
+# Webサーバーが3000番で待機している想定の設定
 TG_ARN=$(aws elbv2 create-target-group \
     --name sample-tg \
     --protocol HTTP \
@@ -20,14 +20,14 @@ TG_ARN=$(aws elbv2 create-target-group \
     --query 'TargetGroups[0].TargetGroupArn' \
     --output text)
 
-echo "✅ Target Group Created: $TG_ARN"
+echo " Target Group Created: $TG_ARN"
 
 # --- 3. Webサーバーを登録（2台まとめて） ---
 aws elbv2 register-targets \
     --target-group-arn $TG_ARN \
     --targets Id=$WEB01_ID Id=$WEB02_ID
 
-echo "✅ Web01 and Web02 registered to Target Group."
+echo " Web01 and Web02 registered to Target Group."
 
 # --- 4. LB用セキュリティグループの ID を取得 ---
 SG_ELB_ID=$(aws ec2 describe-security-groups \
@@ -44,7 +44,7 @@ LB_ARN=$(aws elbv2 create-load-balancer \
     --query 'LoadBalancers[0].LoadBalancerArn' \
     --output text)
 
-echo "✅ Load Balancer Created: $LB_ARN"
+echo " Load Balancer Created: $LB_ARN"
 
 # --- 6. リスナーの作成（80番ポートの受付開始） ---
 echo "Creating Listener (Port 80)..."
@@ -75,7 +75,7 @@ DNS_NAME=$(aws elbv2 describe-load-balancers \
     --output text)
 
 echo "------------------------------------------------"
-echo "✨ Setup Complete!"
+echo " Setup Complete!"
 echo "------------------------------------------------"
 echo "1. Run this in a separate terminal to tunnel LocalStack:"
 echo "   ssh -L 4566:192.168.40.100:4566 nobu@192.168.40.100"

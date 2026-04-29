@@ -1,21 +1,31 @@
-## ロードバランサー
-### ロードバランサー設計・設定値一覧
+# LoadBalancer 作成
 
-| カテゴリ | 項目 | 設定値 / 内容 |
-| :--- | :--- | :--- |
-| **Load Balancer** | 名前 | `sample-elb` |
-| | 種類 | Application Load Balancer (ALB) |
-| | スキーム | `internet-facing` |
-| | 配置サブネット | `sample-subnet-public01`, `02` |
-| | セキュリティグループ | `sample-sg-elb` |
-| **Listener** | プロトコル / ポート | HTTP : 80 |
-| | アクション | ターゲットグループ (`sample-tg`) へ転送 |
-| **Target Group** | 名前 | `sample-tg` |
-| | ターゲットタイプ | instance (EC2) |
-| | プロトコル / ポート | HTTP : 3000 |
-| | 登録ターゲット | `sample-ec2-web01`, `sample-ec2-web02` |
-| | ヘルスチェック | HTTP : `/` (Port: 3000) |
-| **Security** | セキュリティ連動 | `sample-sg-elb` からの Port 3000 通信を許可 |
+## 1. インフラ設計
+
+### Application Load Balancer (ALB) 設計
+| 項目 | 設定内容 |
+| :--- | :--- |
+| **名前** | `sample-elb` |
+| **スキーム** | `internet-facing` (インターネット向け) |
+| **タイプ** | `application` |
+| **サブネット** | `public01`, `public02` (マルチAZ構成) |
+| **セキュリティグループ** | `sample-sg-elb` (80/443許可) |
+
+### ターゲットグループ (Target Group) 設計
+| 項目 | 設定内容 |
+| :--- | :--- |
+| **名前** | `sample-tg` |
+| **プロトコル** | `HTTP` |
+| **ポート** | `3000` (アプリケーション待機ポート) |
+| **ターゲット** | `sample-ec2-web01`, `sample-ec2-web02` |
+| **ヘルスチェックパス** | `/` |
+
+## 2. 実装のポイント（多段防御の設定）
+
+* **SG連携**: WebサーバーのSGに対して、IP帯(CIDR)ではなく**ALBのSG IDをソースとして**通信を許可。これにより、ALBを経由しない不正な直接アクセスを遮断する。
+* **マルチAZ冗長化**: パブリックサブネット2系統にまたがってALBを配置し、可用性を確保。
+
+## 3. セットアップスクリプト
 
 ```
 #!/bin/bash
