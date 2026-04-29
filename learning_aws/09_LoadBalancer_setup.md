@@ -86,17 +86,20 @@ aws elbv2 create-listener \
 
 # --- 7. セキュリティグループの連動（穴あけ） ---
 # Webサーバー側で「ALBのSGからの通信」を許可するように設定を書き換えます
-SG_WEB_ID=$(aws ec2 describe-instances \
-    --instance-ids $WEB01_ID \
-    --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
-    --output text)
+# Webサーバー用SGのIDを名前から確実に取得
+SG_WEB_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=sample-sg-web --query 'SecurityGroups[0].GroupId' --output text)
 
-echo "Allowing traffic from LB SG ($SG_ELB_ID) to Web SG ($SG_WEB_ID) on Port 3000..."
-aws ec2 authorize-security-group-ingress \
-    --group-id $SG_WEB_ID \
-    --protocol tcp \
-    --port 3000 \
-    --source-group $SG_ELB_ID 2>/dev/null || echo "Rule already exists, skipping."
+for target_id in $WEB01_ID $WEB02_ID; do
+    echo "Updating instance $target_id..."
+
+    # ① インスタンスに SG を確実に紐付ける
+    aws ec2 modify-instance-attribute --instance-id $target_id --groups $SG_WEB_ID
+
+    # ② ALB からの通信（3000番）を許可するルールを追加（既にあればスキップされる）
+    aws ec2 authorize-security-group-ingress \
+        --group-id $SG_WEB_ID \
+        --protocol tcp --port 3000 --source-group $SG_ELB_ID 2>/dev/null
+done
 
 # --- 8. アクセス用URLと次の手順を表示 ---
 DNS_NAME=$(aws elbv2 describe-load-balancers \
