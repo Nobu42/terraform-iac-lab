@@ -3,3 +3,8 @@
 *.tfstate.backup
 .terraform.lock.hcl
 *.pem
+tags
+git_commit.sh
+.gitignore
+.*
+
