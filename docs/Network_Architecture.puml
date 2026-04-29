@@ -1,5 +1,5 @@
 @startuml
-' アイコン読み込みを一旦やめて標準の四角形で書く
+' 先頭の記号は「!」です。もしエラーが出るなら「!」を消して試してください。
 skinparam linetype ortho
 skinparam shadowing false
 
