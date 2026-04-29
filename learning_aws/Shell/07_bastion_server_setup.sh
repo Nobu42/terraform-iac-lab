@@ -3,7 +3,7 @@
 # --- 0. 必要なIDを再取得 ---
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
 PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
-SG_BASTION_ID=$(aws ec2 describe-security-groups --filters Name,Values=sample-sg-bastion --query 'SecurityGroups[0].GroupId' --output text)
+SG_BASTION_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=sample-sg-bastion --query 'SecurityGroups[0].GroupId' --output text)
 
 # --- 1. キーペアの再作成 ---
 aws ec2 delete-key-pair --key-name nobu > /dev/null 2>&1
