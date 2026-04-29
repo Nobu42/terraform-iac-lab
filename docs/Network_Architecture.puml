@@ -1,5 +1,4 @@
 @startuml
-' 外部 include をすべて削除しました
 skinparam linetype ortho
 skinparam shadowing false
 skinparam packageStyle rectangle
@@ -9,37 +8,38 @@ title Network Architecture (sample-vpc)
 node "VPC: 10.0.0.0/16" {
 
     rectangle "Availability Zone: 1a" as az1a {
-        package "Public Subnet (10.0.1.0/24)" {
+        package "Public Subnet (10.0.0.0/20)" {
             [ALB] as alb
             [NAT Gateway 01] as nat1
         }
-        package "Private Subnet (10.0.10.0/24)" {
+        package "Private Subnet (10.0.64.0/20)" {
             [WebServer 01] as web1
         }
-        package "DB Subnet (10.0.128.0/24)" {
+        ' DBのIPはスクリプトに合わせて調整が必要ですが、一旦名前のみにします
+        package "DB Subnet 1a" {
             database "DB Master" as db1
         }
     }
 
     rectangle "Availability Zone: 1c" as az1c {
-        package "Public Subnet (10.0.2.0/24)" {
+        package "Public Subnet (10.0.16.0/20)" {
             [Bastion] as bastion
             [NAT Gateway 02] as nat2
         }
-        package "Private Subnet (10.0.20.0/24)" {
+        package "Private Subnet (10.0.80.0/20)" {
             [WebServer 02] as web2
         }
-        package "DB Subnet (10.0.144.0/24)" {
+        package "DB Subnet 1c" {
             database "DB Standby" as db2
         }
     }
 }
 
 ' 通信フロー
-User --> alb : Port 80/443
-User --> bastion : SSH(22)
-bastion -[#blue]-> web1 : SSH
-bastion -[#blue]-> web2 : SSH
+User --> alb
+User --> bastion
+bastion -[#blue]-> web1
+bastion -[#blue]-> web2
 alb --> web1
 alb --> web2
 web1 --> db1
