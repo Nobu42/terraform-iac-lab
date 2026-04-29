@@ -41,55 +41,12 @@ Terraform、Ansible、Kubernetes も順次追加予定。
 
 ### Network Topology (Physical)
 
-```text
-      [ MacBook Air (M4) ] <--- クライアント (外出先 / 自宅)
-               |
-               | (DNS Query)      (AWS CLI / Terraform)
-               |                   |
-  +------------v-------------+     | +-------------------------+
-  |  Raspberry Pi 4 (DNS)    |     | |  Ubuntu Server (Target) |
-  |  (192.168.40.208)        |     | |  (192.168.40.100)       |
-  |                          |     | |                         |
-  |  [ CoreDNS ]             |     | |  [ LocalStack ]         |
-  |  localstack.lab -------- | ----+ |  (AWS Simulation)       |
-  +--------------------------+       +-------------------------+
-               |                                ^
-               |                                |
-               +---[ Internal Private Network ]--+
-```
-## LocalStack Logical Architecture (VPC)
-```
-[ VPC: sample-vpc (10.0.0.0/16) ]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          │
-          │ ┌────────────────────────────────────────┐
-          └─┤ [ Internet Gateway ] <───> ( User )    │
-            └──────────────────┬─────────────────────┘
-                               │
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      [ AZ-1a ]                │                [ AZ-1c ]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ┌────────────────────────┐   │   ┌────────────────────────┐
-  │ [ Public Subnets ]     │   │   │                        │
-  │ [ ALB ロードバランサ　     │───┼───│[ Bastion 踏み台サーバ]    │
-  │  [ NAT Gateway 01 ]    │       │  [ NAT Gateway 02 ]    │
-  └──────────┬─────────────┘       └──────────┬─────────────┘
-             ▼                                ▼
-  ┌──────────┴─────────────┐       ┌──────────┴─────────────┐
-  │ [ Private Subnets ]    │       │                        │
-  │   [ WebServer 01 ]   <───振分───> [ WebServer 02 ]       │
-  └──────────┬─────────────┘       └──────────┬─────────────┘
-             │                                │
-━━━━━━━━━━━━━┿━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━━━━━━━━━━
-             ▼                                ▼
-  ┌──────────┴─────────────┐       ┌──────────┴─────────────┐
-  │ [ DB Subnets ]         │       │ [ DB Subnets ]         │
-  │   [ DB Master ]        <──同期──>  [ DB Standby ]        │
-  └────────────────────────┘       └────────────────────────┘
-```
-![Physical](./docs/Physical.png?v=2)
-![Network Architecture](./docs/Network_Architecture.png?v=2)
 
+![Physical](./docs/Physical.png?v=2)
+
+## LocalStack Logical Architecture (VPC)
+
+![Network Architecture](./docs/Network_Architecture.png?v=2)
 
 ## Learning Terraform
 
