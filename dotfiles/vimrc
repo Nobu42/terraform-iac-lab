@@ -6,7 +6,7 @@ call plug#begin('~/.vim/plugged')
 Plug 'sheerun/vim-polyglot' " 言語別シンタックス
 Plug 'itchyny/lightline.vim' " ステータスライン
 Plug 'jiangmiao/auto-pairs'  " ★【追加】スマートな括弧補完
-Plug 'hashivim/vim-terraform' " ★【追加】Terraform専用プラグイン（超便利です）
+Plug 'hashivim/vim-terraform' " ★【追加】Terraform専用プラグイン（超便利）
 
 call plug#end()
 
@@ -31,7 +31,7 @@ set hlsearch
 nnoremap <Esc><Esc> :nohlsearch<CR>
 
 " 編集設定 (グローバル設定を「スペース4」に変更)
-set expandtab       " タブの代わりにスペースを使用（現代の開発の標準）
+set expandtab       " タブの代わりにスペースを使用
 set tabstop=4       " タブを表示するときの幅
 set shiftwidth=4    " 自動インデント時の幅
 set softtabstop=4
@@ -47,7 +47,7 @@ filetype plugin indent on
 syntax on
 
 " ==========================================
-" 3. 言語別設定 (ここが Terraform 対策の肝です)
+" 3. 言語別設定 (Terraform 対策追加)
 " ==========================================
 
 " Terraform (HashiCorp標準: スペース2つ)
@@ -55,7 +55,7 @@ autocmd FileType terraform setlocal expandtab tabstop=2 shiftwidth=2 softtabstop
 " .tfファイルを確実にterraformタイプとして認識させる
 autocmd BufRead,BufNewFile *.tf set filetype=terraform
 
-" Terraform保存時の自動フォーマット (vim-terraformの機能を利用)
+" Terraform保存時の自動フォーマット (vim-terraformの機能)
 let g:terraform_fmt_on_save = 1
 let g:terraform_align = 1 " = の位置を綺麗に揃えてくれる
 
