@@ -154,7 +154,6 @@ echo "127.0.0.1 sample-elb.elb.localhost.localstack.cloud" | sudo tee -a /etc/ho
 #### ④ ブラウザでの最終確認
 
 以下のURLをブラウザで開き、「Hello from WebServer 01」が表示されれば成功。
-※ WebServer01にssh web01でログインし、上記メッセージのindex.htmlを作成しておく。
 
 http://sample-elb.elb.localhost.localstack.cloud:4566
 
