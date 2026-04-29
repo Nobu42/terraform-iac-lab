@@ -87,7 +87,10 @@ Terraform、Ansible、Kubernetes も順次追加予定。
   │   [ DB Master ]        <──同期──>  [ DB Standby ]        │
   └────────────────────────┘       └────────────────────────┘
 ```
-<img src="./docs/Network_Architecture.png" width="600">
+
+![Network Architecture](./docs/Network_Architecture.png?v=2)
+
+
 ## Learning Terraform
 
 - **追記予定**
