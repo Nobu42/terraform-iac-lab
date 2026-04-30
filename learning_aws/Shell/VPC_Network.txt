@@ -1,0 +1,184 @@
+#!/bin/bash
+
+# VPCの作成とタグ付与を同時に実行
+# 作成時にタグを付ける
+VPC_ID=$(aws ec2 create-vpc \
+    --cidr-block 10.0.0.0/16 \
+    --instance-tenancy default \
+    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=sample-vpc}]' \
+    --query 'Vpc.VpcId' \
+    --output text)
+
+# 2. 作成されたIDの確認
+echo "New VPC ID: $VPC_ID"
+
+# 3. DNSサポートの有効化（ALBやRDSを使う際に重要！）
+# ※LocalStackでもこれを有効にしておくと、本番環境に近い挙動になる
+aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames '{"Value":true}'
+aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-support '{"Value":true}'
+
+# 4. 最終確認
+# ID、名前、状態、DNS設定を一覧で表示
+aws ec2 describe-vpcs \
+    --vpc-ids $VPC_ID \
+    --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock, DNSHost:EnableDnsHostnames.Value}' \
+    --output table
+#!/bin/bash
+
+# 0. VPC IDの再取得
+VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
+
+# 1. 外部サブネット 1 (1a) + タグ同時付与 + パブリックIP自動割当有効化
+PUB01_ID=$(aws ec2 create-subnet \
+    --vpc-id $VPC_ID \
+    --cidr-block 10.0.0.0/20 \
+    --availability-zone ap-northeast-1a \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-public01}]' \
+    --query 'Subnet.SubnetId' --output text)
+
+aws ec2 modify-subnet-attribute --subnet-id $PUB01_ID --map-public-ip-on-launch
+
+# 2. 外部サブネット 2 (1c)
+PUB02_ID=$(aws ec2 create-subnet \
+    --vpc-id $VPC_ID \
+    --cidr-block 10.0.16.0/20 \
+    --availability-zone ap-northeast-1c \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-public02}]' \
+    --query 'Subnet.SubnetId' --output text)
+
+aws ec2 modify-subnet-attribute --subnet-id $PUB02_ID --map-public-ip-on-launch
+
+# 3. 内部サブネット 1 (1a)
+PRI01_ID=$(aws ec2 create-subnet \
+    --vpc-id $VPC_ID \
+    --cidr-block 10.0.64.0/20 \
+    --availability-zone ap-northeast-1a \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-private01}]' \
+    --query 'Subnet.SubnetId' --output text)
+
+# 4. 内部サブネット 2 (1c)
+PRI02_ID=$(aws ec2 create-subnet \
+    --vpc-id $VPC_ID \
+    --cidr-block 10.0.80.0/20 \
+    --availability-zone ap-northeast-1c \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-private02}]' \
+    --query 'Subnet.SubnetId' --output text)
+
+echo "Subnets created: Public($PUB01_ID, $PUB02_ID), Private($PRI01_ID, $PRI02_ID)"
+
+aws ec2 describe-subnets \
+    --filters Name=vpc-id,Values=$VPC_ID \
+    --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value | [0], AZ:AvailabilityZone, CIDR:CidrBlock, ID:SubnetId}' \
+    --output table
+#!/bin/bash
+
+# 1. ターゲットとなるVPCのIDを取得
+VPC_ID=$(aws ec2 describe-vpcs \
+    --filters Name=tag:Name,Values=sample-vpc \
+    --query 'Vpcs[0].VpcId' \
+    --output text)
+
+# 2. インターネットゲートウェイ(IGW)を作成し、タグも同時に付与
+IGW_ID=$(aws ec2 create-internet-gateway \
+    --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=sample-igw}]' \
+    --query 'InternetGateway.InternetGatewayId' \
+    --output text)
+
+# 3. 作成したIGWをVPCにアタッチ（接続）
+aws ec2 attach-internet-gateway \
+    --vpc-id $VPC_ID \
+    --internet-gateway-id $IGW_ID
+
+echo "Success! Attached IGW ($IGW_ID) to VPC ($VPC_ID)"
+
+# 4. 正常に接続されたかの確認（ID, VPC ID, 状態を表示）
+aws ec2 describe-internet-gateways \
+    --internet-gateway-ids $IGW_ID \
+    --query 'InternetGateways[*].{ID:InternetGatewayId, VPC:Attachments[0].VpcId, State:Attachments[0].State}' \
+    --output table
+#!/bin/bash
+
+# ID取得
+PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
+PUB02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public02 --query 'Subnets[0].SubnetId' --output text)
+
+# -------------------------------------------------------------------
+# NATゲートウェイ用の固定パブリックIP (Elastic IP) の確保
+# -------------------------------------------------------------------
+# NATゲートウェイには固定された外向きのIPが必要なため、
+# AWSのプールから一つ「割り当てID (Allocation ID)」を取得して変数に格納する。
+# ※LocalStack上では料金は発生しないが、本番環境では未使用時に課金されるので注意。
+# 構文: aws ec2 allocate-address --domain vpc --query 'AllocationId' --output text
+
+# --- NAT Gateway 01 ---
+ALLOC_ID_01=$(aws ec2 allocate-address --domain vpc --query 'AllocationId' --output text)
+
+NGW01_ID=$(aws ec2 create-nat-gateway \
+    --subnet-id $PUB01_ID \
+    --allocation-id $ALLOC_ID_01 \
+    --tag-specifications 'ResourceType=natgateway,Tags=[{Key=Name,Value=sample-ngw-01}]' \
+    --query 'NatGateway.NatGatewayId' --output text)
+
+# --- NAT Gateway 02 ---
+ALLOC_ID_02=$(aws ec2 allocate-address --domain vpc --query 'AllocationId' --output text)
+
+NGW02_ID=$(aws ec2 create-nat-gateway \
+    --subnet-id $PUB02_ID \
+    --allocation-id $ALLOC_ID_02 \
+    --tag-specifications 'ResourceType=natgateway,Tags=[{Key=Name,Value=sample-ngw-02}]' \
+    --query 'NatGateway.NatGatewayId' --output text)
+
+echo "Waiting for NAT Gateways to become available..."
+# 本番環境ではこれがないと次のルート設定で失敗することがある
+aws ec2 wait nat-gateway-available --nat-gateway-ids $NGW01_ID $NGW02_ID
+
+echo "NAT Gateways are READY: $NGW01_ID, $NGW02_ID"
+
+# 確認表示
+aws ec2 describe-nat-gateways \
+    --query 'NatGateways[*].{Name:Tags[?Key==`Name`].Value | [0], State:State, PublicIP:NatGatewayAddresses[0].PublicIp}' \
+    --output table
+#!/bin/bash
+
+# --- 0. 必要なIDを名前タグから再取得 ---
+VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
+IGW_ID=$(aws ec2 describe-internet-gateways --filters Name=tag:Name,Values=sample-igw --query 'InternetGateways[0].InternetGatewayId' --output text)
+NGW01_ID=$(aws ec2 describe-nat-gateways --filter Name=tag:Name,Values=sample-ngw-01 --query 'NatGateways[0].NatGatewayId' --output text)
+NGW02_ID=$(aws ec2 describe-nat-gateways --filter Name=tag:Name,Values=sample-ngw-02 --query 'NatGateways[0].NatGatewayId' --output text)
+PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
+PUB02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public02 --query 'Subnets[0].SubnetId' --output text)
+PRI01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private01 --query 'Subnets[0].SubnetId' --output text)
+PRI02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private02 --query 'Subnets[0].SubnetId' --output text)
+
+# --- 1. パブリック用ルートテーブル (IGW経由) ---
+RT_PUB_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID \
+    --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=sample-rt-public}]' \
+    --query 'RouteTable.RouteTableId' --output text)
+
+aws ec2 create-route --route-table-id $RT_PUB_ID --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID
+aws ec2 associate-route-table --subnet-id $PUB01_ID --route-table-id $RT_PUB_ID
+aws ec2 associate-route-table --subnet-id $PUB02_ID --route-table-id $RT_PUB_ID
+
+# --- 2. プライベート用ルートテーブル 01 (NAT-GW-01経由) ---
+RT_PRI01_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID \
+    --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=sample-rt-private01}]' \
+    --query 'RouteTable.RouteTableId' --output text)
+
+aws ec2 create-route --route-table-id $RT_PRI01_ID --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $NGW01_ID
+aws ec2 associate-route-table --subnet-id $PRI01_ID --route-table-id $RT_PRI01_ID
+
+# --- 3. プライベート用ルートテーブル 02 (NAT-GW-02経由) ---
+RT_PRI02_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID \
+    --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=sample-rt-private02}]' \
+    --query 'RouteTable.RouteTableId' --output text)
+
+aws ec2 create-route --route-table-id $RT_PRI02_ID --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $NGW02_ID
+aws ec2 associate-route-table --subnet-id $PRI02_ID --route-table-id $RT_PRI02_ID
+
+echo "All Route Tables configured and associated."
+
+# --- 4. 最終確認（名前、ルート、関連付けサブネットを表示） ---
+aws ec2 describe-route-tables \
+    --filters Name=vpc-id,Values=$VPC_ID \
+    --query 'RouteTables[*].{Name:Tags[?Key==`Name`].Value | [0], Subnet:Associations[*].SubnetId | [0], IGW:Routes[?DestinationCidrBlock==`0.0.0.0/0`].GatewayId | [0], NGW:Routes[?DestinationCidrBlock==`0.0.0.0/0`].NatGatewayId | [0]}' \
+    --output table
