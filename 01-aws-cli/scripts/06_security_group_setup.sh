@@ -8,10 +8,19 @@ VPC_NAME="sample-vpc"
 BASTION_SG_NAME="sample-sg-bastion"
 ELB_SG_NAME="sample-sg-elb"
 
-# 学習用。実運用では自宅IPなどに絞る
-SSH_ALLOWED_CIDR="0.0.0.0/0"
+MY_GLOBAL_IP=$(curl -s https://checkip.amazonaws.com | tr -d '\n')
+
+if [ -z "$MY_GLOBAL_IP" ]; then
+  echo "Error: Could not detect global IP address."
+  exit 1
+fi
+
+SSH_ALLOWED_CIDR="${MY_GLOBAL_IP}/32"
 HTTP_ALLOWED_CIDR="0.0.0.0/0"
 HTTPS_ALLOWED_CIDR="0.0.0.0/0"
+
+echo "SSH allowed CIDR: $SSH_ALLOWED_CIDR"
+
 
 # LocalStack向け設定が残っていても実AWSへ向ける
 unalias aws 2>/dev/null || true

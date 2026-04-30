@@ -1,56 +1,152 @@
-## 踏み台サーバー（Bastion）の作成
+# 07 Bastion Server Setup
 
-### キーペア設計
-| 項目 | 設定内容 |
+## 目的
+
+AWS CLIで踏み台サーバー用のEC2インスタンスを作成する。
+
+踏み台サーバーは、Public Subnetに配置し、Private Subnet内のサーバーへSSH接続するための入口として利用する。Private Subnet内のEC2へ直接Public IPを付与せず、管理用通信を踏み台サーバー経由に集約することで、外部公開範囲を小さくできる。
+
+## 実行環境
+
+この手順は以下の環境で検証しています。
+
+- 実行環境: 実AWS
+- リージョン: ap-northeast-1
+- AWS CLI: v2
+- 対象リソース: Key Pair, EC2
+- 前提:
+  - `sample-vpc` が作成済みであること
+  - `sample-subnet-public01` が作成済みであること
+  - `sample-sg-bastion` が作成済みであること
+  - Public SubnetのRoute TableがInternet Gatewayへ向いていること
+
+## 設計値
+
+| 項目 | 値 |
 | :--- | :--- |
-| **名前** | `nobu` |
-| **タイプ** | RSA |
-| **形式** | `.pem` |
+| インスタンス名 | sample-ec2-bastion |
+| 配置先Subnet | sample-subnet-public01 |
+| Security Group | sample-sg-bastion |
+| AMI | Amazon Linux 2023 latest AMI |
+| インスタンスタイプ | t3.micro |
+| Key Pair | nobu |
+| SSHユーザー | ec2-user |
+| Public IP | 自動割当 |
+| Projectタグ | terraform-iac-lab |
+| Environmentタグ | learning |
 
-### EC2 インスタンス設計：sample-ec2-bastion
-| 項目 | 設定内容 |
-| :--- | :--- |
-| **名前タグ** | `sample-ec2-bastion` |
-| **AMI ID** | `ami-0ff227f0771efc640` |
-| **タイプ** | `t2.micro` |
-| **キーペア** | `nobu` |
-| **サブネット** | `sample-subnet-public01` |
-| **パブリックIP** | 有効 |
-| **セキュリティグループ** | `sample-sg-bastion` |
+## スクリプト
 
+- [07_bastion_server_setup.sh](../scripts/07_bastion_server_setup.sh)
+
+## 実行コマンド
+
+```bash
+./07_bastion_server_setup.sh
 ```
-#!/bin/bash
 
-# --- 0. 必要なIDを再取得 ---
-VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
-PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
-SG_BASTION_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=sample-sg-bastion --query 'SecurityGroups[0].GroupId' --output text)
+## 確認コマンド
 
-# --- 1. キーペアの再作成 ---
-aws ec2 delete-key-pair --key-name nobu > /dev/null 2>&1
+```bash
+aws ec2 describe-instances \
+  --profile learning \
+  --region ap-northeast-1 \
+  --filters Name=tag:Name,Values=sample-ec2-bastion \
+  --query 'Reservations[*].Instances[*].{Name:Tags[?Key==`Name`].Value|[0],ID:InstanceId,State:State.Name,Type:InstanceType,PublicIP:PublicIpAddress,PrivateIP:PrivateIpAddress,Subnet:SubnetId}' \
+  --output table
+```
+
+## SSH接続確認
+
+スクリプト実行後に表示されたPublic IPを指定してSSH接続する。
+
+```bash
+ssh -i nobu.pem ec2-user@<Public IP>
+```
+
+例:
+
+```bash
+ssh -i nobu.pem ec2-user@xxx.xxx.xxx.xxx
+```
+
+## 実AWSでの実行結果
+
+Public Subnetに踏み台サーバーを作成し、Public IPとPrivate IPが割り当てられた。
+
+| Name | State | Type | Public IP | Private IP |
+| :--- | :--- | :--- | :--- | :--- |
+| sample-ec2-bastion | running | t3.micro | 割り当て済み | 割り当て済み |
+
+## 学んだこと
+
+- EC2を起動するには、AMI、インスタンスタイプ、Key Pair、Subnet、Security Groupが必要
+- Public Subnetで `--associate-public-ip-address` を指定すると、EC2にPublic IPを割り当てられる
+- Amazon Linux 2023では、SSHユーザーとして通常 `ec2-user` を使用する
+- Key Pairを作成すると秘密鍵が一度だけ取得できるため、`.pem` ファイルの管理が重要になる
+- `.pem` ファイルはGit管理してはいけない
+- 実AWSではLocalStack用AMIを利用できないため、SSM Parameter StoreからAmazon Linux 2023の最新AMIを取得した
+- 無料枠対象のインスタンスタイプはアカウント作成時期やAWS側のFree Tier仕様により変わるため、事前に確認が必要
+
+## Free Tierに関するメモ
+
+初回実行時、`t2.micro` でEC2を起動しようとしたところ、以下のエラーが発生した。
+
+```text
+The specified instance type is not eligible for Free Tier.
+```
+
+そのため、無料枠対象のインスタンスタイプを確認し、`t3.micro` に変更して実行した。
+
+無料枠対象のインスタンスタイプは以下のコマンドで確認できる。
+
+```bash
+aws ec2 describe-instance-types \
+  --profile learning \
+  --region ap-northeast-1 \
+  --filters Name=free-tier-eligible,Values=true \
+  --query 'InstanceTypes[*].InstanceType' \
+  --output text
+```
+
+## 注意事項
+
+EC2インスタンスは起動中に課金対象となる。学習が終わったら停止または削除する。
+
+Public IPv4アドレスも課金対象となる場合があるため、不要なEC2やElastic IPを放置しない。
+
+`nobu.pem` は秘密鍵であり、GitHubにpushしてはいけない。`.gitignore` に以下を追加して管理対象外にする。
+
+```gitignore
+*.pem
+*.key
+```
+
+Security GroupでSSHを `0.0.0.0/0` に開放すると、インターネット全体からSSH接続を受け付ける状態になる。実運用では自分のグローバルIP `/32` に制限する。
+
+## 削除時の注意
+
+Bastion Serverを削除する場合は、EC2をterminateする。
+
+```bash
+aws ec2 terminate-instances \
+  --profile learning \
+  --region ap-northeast-1 \
+  --instance-ids <Instance ID>
+```
+
+Key Pairも不要であれば削除する。
+
+```bash
+aws ec2 delete-key-pair \
+  --profile learning \
+  --region ap-northeast-1 \
+  --key-name nobu
+```
+
+ローカルの秘密鍵ファイルも不要であれば削除する。
+
+```bash
 rm -f nobu.pem
-aws ec2 create-key-pair --key-name nobu --query 'KeyMaterial' --output text > nobu.pem
-chmod 400 nobu.pem
-
-# --- 2. 踏み台サーバー（Bastion）の起動 ---
-# AMI ID: ami-07b643b5e45e (LocalStack用 AL2)
-BASTION_ID=$(aws ec2 run-instances \
-    --image-id ami-07b643b5e45e \
-    --count 1 \
-    --instance-type t2.micro \
-    --key-name nobu \
-    --security-group-ids $SG_BASTION_ID \
-    --subnet-id $PUB01_ID \
-    --associate-public-ip-address \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-bastion}]' \
-    --query 'Instances[0].InstanceId' \
-    --output text)
-
-echo "Waiting for Bastion ($BASTION_ID) to be running..."
-aws ec2 wait instance-running --instance-ids $BASTION_ID
-
-# 起動直後のIPと、SSHポート転送設定の確認
-PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $BASTION_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
-echo "Bastion is ready at $PUBLIC_IP"
-echo "Check your docker ps for the SSH port mapping (e.g., 60577)."
 ```
+
