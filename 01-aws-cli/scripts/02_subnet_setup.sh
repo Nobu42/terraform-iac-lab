@@ -1,47 +1,100 @@
 #!/bin/bash
+set -euo pipefail
 
-# 0. VPC IDの再取得
-VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
+PROFILE="learning"
+REGION="ap-northeast-1"
+VPC_NAME="sample-vpc"
 
-# 1. 外部サブネット 1 (1a) + タグ同時付与 + パブリックIP自動割当有効化
+# LocalStack向け設定が残っていても実AWSへ向ける
+unalias aws 2>/dev/null || true
+unset AWS_ENDPOINT_URL
+unset LOCALSTACK_HOST
+
+echo "=== Caller Identity ==="
+aws sts get-caller-identity \
+  --profile "$PROFILE" \
+  --output table
+
+echo "=== Get VPC ID ==="
+VPC_ID=$(aws ec2 describe-vpcs \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=tag:Name,Values="$VPC_NAME" \
+  --query 'Vpcs[0].VpcId' \
+  --output text)
+
+if [ "$VPC_ID" = "None" ] || [ -z "$VPC_ID" ]; then
+  echo "Error: VPC not found. Please run 01_vpc_setup.sh first."
+  exit 1
+fi
+
+echo "Target VPC ID: $VPC_ID"
+
+echo "=== Create Public Subnet 01 ==="
 PUB01_ID=$(aws ec2 create-subnet \
-    --vpc-id $VPC_ID \
-    --cidr-block 10.0.0.0/20 \
-    --availability-zone ap-northeast-1a \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-public01}]' \
-    --query 'Subnet.SubnetId' --output text)
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --vpc-id "$VPC_ID" \
+  --cidr-block 10.0.0.0/20 \
+  --availability-zone ap-northeast-1a \
+  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-public01},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning},{Key=Type,Value=public}]' \
+  --query 'Subnet.SubnetId' \
+  --output text)
 
-aws ec2 modify-subnet-attribute --subnet-id $PUB01_ID --map-public-ip-on-launch
+aws ec2 modify-subnet-attribute \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --subnet-id "$PUB01_ID" \
+  --map-public-ip-on-launch
 
-# 2. 外部サブネット 2 (1c)
+echo "=== Create Public Subnet 02 ==="
 PUB02_ID=$(aws ec2 create-subnet \
-    --vpc-id $VPC_ID \
-    --cidr-block 10.0.16.0/20 \
-    --availability-zone ap-northeast-1c \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-public02}]' \
-    --query 'Subnet.SubnetId' --output text)
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --vpc-id "$VPC_ID" \
+  --cidr-block 10.0.16.0/20 \
+  --availability-zone ap-northeast-1c \
+  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-public02},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning},{Key=Type,Value=public}]' \
+  --query 'Subnet.SubnetId' \
+  --output text)
 
-aws ec2 modify-subnet-attribute --subnet-id $PUB02_ID --map-public-ip-on-launch
+aws ec2 modify-subnet-attribute \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --subnet-id "$PUB02_ID" \
+  --map-public-ip-on-launch
 
-# 3. 内部サブネット 1 (1a)
+echo "=== Create Private Subnet 01 ==="
 PRI01_ID=$(aws ec2 create-subnet \
-    --vpc-id $VPC_ID \
-    --cidr-block 10.0.64.0/20 \
-    --availability-zone ap-northeast-1a \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-private01}]' \
-    --query 'Subnet.SubnetId' --output text)
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --vpc-id "$VPC_ID" \
+  --cidr-block 10.0.64.0/20 \
+  --availability-zone ap-northeast-1a \
+  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-private01},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning},{Key=Type,Value=private}]' \
+  --query 'Subnet.SubnetId' \
+  --output text)
 
-# 4. 内部サブネット 2 (1c)
+echo "=== Create Private Subnet 02 ==="
 PRI02_ID=$(aws ec2 create-subnet \
-    --vpc-id $VPC_ID \
-    --cidr-block 10.0.80.0/20 \
-    --availability-zone ap-northeast-1c \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-private02}]' \
-    --query 'Subnet.SubnetId' --output text)
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --vpc-id "$VPC_ID" \
+  --cidr-block 10.0.80.0/20 \
+  --availability-zone ap-northeast-1c \
+  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=sample-subnet-private02},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning},{Key=Type,Value=private}]' \
+  --query 'Subnet.SubnetId' \
+  --output text)
 
-echo "Subnets created: Public($PUB01_ID, $PUB02_ID), Private($PRI01_ID, $PRI02_ID)"
+echo "Subnets created:"
+echo "  Public : $PUB01_ID, $PUB02_ID"
+echo "  Private: $PRI01_ID, $PRI02_ID"
 
+echo "=== Describe Subnets ==="
 aws ec2 describe-subnets \
-    --filters Name=vpc-id,Values=$VPC_ID \
-    --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value | [0], AZ:AvailabilityZone, CIDR:CidrBlock, ID:SubnetId}' \
-    --output table
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=vpc-id,Values="$VPC_ID" \
+  --query 'Subnets[*].{Name:Tags[?Key==`Name`].Value|[0],Type:Tags[?Key==`Type`].Value|[0],AZ:AvailabilityZone,CIDR:CidrBlock,PublicIP:MapPublicIpOnLaunch,ID:SubnetId}' \
+  --output table
+
