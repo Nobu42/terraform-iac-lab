@@ -1,0 +1,11 @@
+*.pem
+*.key
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+.DS_Store
+tags
+*.bak
+*.org
+
