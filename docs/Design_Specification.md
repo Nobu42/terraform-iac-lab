@@ -1,133 +1,171 @@
-# VPC設計書
-
-## VPC設定値
-- Name Tag: sample-vpc
-- IPv4 CIDR: 10.0.0.0/16
-- Tenancy: default
+# インフラ設計書（AWS VPC構成）
 
 ---
 
-## サブネット設計一覧
-| 区分 | サブネット名 | 可用性ゾーン (AZ) | IPv4 CIDR |
-| :--- | :--- | :--- | :--- |
-| 外部 (Public) 1 | sample-subnet-public01 | ap-northeast-1a | 10.0.0.0/20 |
-| 外部 (Public) 2 | sample-subnet-public02 | ap-northeast-1c | 10.0.16.0/20 |
-| 内部 (Private) 1 | sample-subnet-private01 | ap-northeast-1a | 10.0.64.0/20 |
-| 内部 (Private) 2 | sample-subnet-private02 | ap-northeast-1c | 10.0.80.0/20 |
+## 1. 目的
+本設計書は、Webアプリケーション基盤をAWS上に構築するためのネットワークおよびインフラ構成を定義するものである。
 
 ---
 
-## インターネットゲートウェイ
-- 名前タグ: sample-igw
-- VPC: sample-vpc
+## 2. システム概要
+- パブリックサブネットにALBを配置
+- プライベートサブネットにWeb/APサーバを配置
+- NAT Gateway経由で外部通信を実施
+- RDSはプライベートサブネットに配置（マルチAZ想定）
 
 ---
 
-## NATゲートウェイ
-| 項目 | NATゲートウェイ 1 | NATゲートウェイ 2 |
-| :--- | :--- | :--- |
-| 名前 | sample-ngw-01 | sample-ngw-02 |
-| サブネット | sample-subnet-public01 | sample-subnet-public02 |
-| 接続タイプ | パブリック | パブリック |
-| Elastic IP | 自動生成 | 自動生成 |
+## 3. VPC設計
 
----
-
-## ルートテーブル設定
-| 項目 | パブリック用 (共通) | プライベート用 1 | プライベート用 2 |
-| :--- | :--- | :--- | :--- |
-| 名前タグ | sample-rt-public | sample-rt-private01 | sample-rt-private02 |
-| ルート (local) | 10.0.0.0/16 (local) | 10.0.0.0/16 (local) | 10.0.0.0/16 (local) |
-| ルート (外部) | 0.0.0.0/0 (sample-igw) | 0.0.0.0/0 (sample-ngw-01) | 0.0.0.0/0 (sample-ngw-02) |
-| 関連付けサブネット | sample-subnet-public01 / sample-subnet-public02 | sample-subnet-private01 | sample-subnet-private02 |
-
----
-
-## セキュリティグループ設定
-| 項目 | 踏み台サーバー用 | ロードバランサー用 |
-| :--- | :--- | :--- |
-| 名前タグ | sample-sg-bastion | sample-sg-elb |
-| 説明 | for bastion server | for load balancer |
-| VPC | sample-vpc | sample-vpc |
-| インバウンド 1 | SSH (22) / 0.0.0.0/0 | HTTP (80) / 0.0.0.0/0 |
-| インバウンド 2 | - | HTTPS (443) / 0.0.0.0/0 |
-
----
-
-# EC2設計
-
-## 共通設定
-| 項目 | 設定内容 |
+### 3.1 VPC設定
+| 項目 | 設定値 |
 | :--- | :--- |
-| AMI ID | ami-07b643b5e45e (Amazon Linux 2) |
+| Name Tag | sample-vpc |
+| IPv4 CIDR | 10.0.0.0/16 |
+| Tenancy | default |
+
+---
+
+### 3.2 サブネット設計
+| 区分 | サブネット名 | AZ | CIDR | 用途 |
+| :--- | :--- | :--- | :--- | :--- |
+| Public | sample-subnet-public01 | ap-northeast-1a | 10.0.0.0/20 | ALB / NAT配置 |
+| Public | sample-subnet-public02 | ap-northeast-1c | 10.0.16.0/20 | ALB / NAT配置 |
+| Private | sample-subnet-private01 | ap-northeast-1a | 10.0.64.0/20 | Web/AP |
+| Private | sample-subnet-private02 | ap-northeast-1c | 10.0.80.0/20 | Web/AP |
+
+---
+
+### 3.3 インターネット接続
+| リソース | 名前 | 接続先 |
+| :--- | :--- | :--- |
+| IGW | sample-igw | sample-vpc |
+
+---
+
+### 3.4 NAT Gateway
+| 名前 | 配置サブネット | AZ | 用途 |
+| :--- | :--- | :--- | :--- |
+| sample-ngw-01 | sample-subnet-public01 | ap-northeast-1a | Private01用 |
+| sample-ngw-02 | sample-subnet-public02 | ap-northeast-1c | Private02用 |
+
+---
+
+### 3.5 ルートテーブル
+| 名前 | 対象 | ルート | 関連サブネット |
+| :--- | :--- | :--- | :--- |
+| sample-rt-public | Public | 0.0.0.0/0 → IGW | public01, public02 |
+| sample-rt-private01 | Private | 0.0.0.0/0 → NGW-01 | private01 |
+| sample-rt-private02 | Private | 0.0.0.0/0 → NGW-02 | private02 |
+
+---
+
+## 4. セキュリティ設計
+
+### 4.1 セキュリティグループ
+| 名前 | 用途 | インバウンド | 備考 |
+| :--- | :--- | :--- | :--- |
+| sample-sg-bastion | 踏み台 | SSH 22 / 0.0.0.0/0 | 制限検討必要 |
+| sample-sg-elb | ALB | HTTP 80 / HTTPS 443 | 公開 |
+
+※ 本番環境ではSSH接続元はIP制限を実施すること
+
+---
+
+## 5. EC2設計
+
+### 5.1 共通設定
+| 項目 | 値 |
+| :--- | :--- |
+| AMI | Amazon Linux 2 |
 | インスタンスタイプ | t2.micro |
-| キーペア | nobu |
-| パブリックIP | 無効 |
-| セキュリティグループ | default |
+| 配置 | Private Subnet |
+| Public IP | 無効 |
 | OSユーザー | ec2-user |
 
-## 個別構成
-| サーバー名 | 名前タグ | 配置サブネット | 用途 |
+---
+
+### 5.2 サーバ一覧
+| 名前 | AZ | サブネット | 用途 |
 | :--- | :--- | :--- | :--- |
-| Webサーバー01 | sample-ec2-web01 | sample-subnet-private01 | アプリ実行 (AZ-a) |
-| Webサーバー02 | sample-ec2-web02 | sample-subnet-private02 | アプリ実行 (AZ-c) |
+| sample-ec2-web01 | 1a | private01 | Web/AP |
+| sample-ec2-web02 | 1c | private02 | Web/AP |
 
 ---
 
-# ロードバランサー設計
+## 6. ロードバランサー設計
 
-## ALB
-| 項目 | 設定内容 |
+### 6.1 ALB
+| 項目 | 内容 |
 | :--- | :--- |
 | 名前 | sample-elb |
 | スキーム | internet-facing |
-| タイプ | application |
 | サブネット | public01, public02 |
-| セキュリティグループ | sample-sg-elb |
+| SG | sample-sg-elb |
 
-## ターゲットグループ
-| 項目 | 設定内容 |
+---
+
+### 6.2 ターゲットグループ
+| 項目 | 内容 |
 | :--- | :--- |
 | 名前 | sample-tg |
 | プロトコル | HTTP |
 | ポート | 3000 |
-| ターゲット | sample-ec2-web01, sample-ec2-web02 |
+| ターゲット | EC2 Webサーバ |
 | ヘルスチェック | / |
 
 ---
 
-# RDS設計
+## 7. RDS設計
 
-## 概要
-MySQL 8.0 を使用したRDS構築。マルチAZ構成を前提。
-
----
-
-## パラメータグループ
-| 項目 | 設定値 |
-| :--- | :--- |
-| ファミリー | mysql8.0 |
-| 名前 | sample-db-pg |
-| 説明 | sample parameter group |
+### 7.1 基本構成
+- エンジン: MySQL 8.0
+- 配置: Private Subnet
+- マルチAZ構成: 有効（想定）
 
 ---
 
-## オプショングループ
-| 項目 | 設定値 |
+### 7.2 パラメータグループ
+| 名前 | 内容 |
 | :--- | :--- |
-| エンジン | mysql |
-| バージョン | 8.0 |
-| 名前 | sample-db-og |
-| 説明 | sample option group |
+| sample-db-pg | mysql8.0 |
 
 ---
 
-## DBサブネットグループ
-| 項目 | 設定値 |
+### 7.3 オプショングループ
+| 名前 | 内容 |
 | :--- | :--- |
-| 名前 | sample-db-subnet |
-| 説明 | sample db subnet |
-| VPC | sample-vpc |
-| AZ | ap-northeast-1a, ap-northeast-1c |
-| サブネット | sample-subnet-private01, sample-subnet-private02 |
+| sample-db-og | mysql 8.0 |
+
+---
+
+### 7.4 サブネットグループ
+| 名前 | サブネット |
+| :--- | :--- |
+| sample-db-subnet | private01, private02 |
+
+---
+
+## 8. 非機能要件
+
+### 可用性
+- マルチAZ構成（ALB / EC2 / NAT / RDS）
+
+### セキュリティ
+- Private配置による直接アクセス遮断
+- SGによる通信制御
+- SSHアクセス制限（要検討）
+
+### 運用
+- CloudWatchによる監視（別途定義）
+- ログ管理（ALB / EC2 / RDS）
+
+---
+
+## 9. 注意事項
+- 本設計は検証環境を前提とする
+- 本番利用時は以下を追加検討すること
+  - WAF導入
+  - IAMロール設計
+  - バックアップ/DR設計
 
