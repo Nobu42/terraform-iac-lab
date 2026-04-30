@@ -1,109 +1,228 @@
 #!/bin/bash
+set -euo pipefail
 
-# --- 0. 必要なサブネットIDを再取得 ---
-PRI01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private01 --query 'Subnets[0].SubnetId' --output text)
-PRI02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-private02 --query 'Subnets[0].SubnetId' --output text)
+PROFILE="learning"
+REGION="ap-northeast-1"
 
-# --- 1. Webサーバー起動 (run-instancesの戻り値を確実に変数に保持) ---
-echo "Launching Web servers..."
+VPC_NAME="sample-vpc"
+PRIVATE_SUBNET_01_NAME="sample-subnet-private01"
+PRIVATE_SUBNET_02_NAME="sample-subnet-private02"
+BASTION_INSTANCE_NAME="sample-ec2-bastion"
+BASTION_SG_NAME="sample-sg-bastion"
+ELB_SG_NAME="sample-sg-elb"
+WEB_SG_NAME="sample-sg-web"
 
+KEY_NAME="nobu"
+KEY_FILE="${KEY_NAME}.pem"
+INSTANCE_TYPE="t3.micro"
+WEB01_NAME="sample-ec2-web01"
+WEB02_NAME="sample-ec2-web02"
+APP_PORT="3000"
+
+# LocalStack向け設定が残っていても実AWSへ向ける
+unalias aws 2>/dev/null || true
+unset AWS_ENDPOINT_URL
+unset LOCALSTACK_HOST
+
+# Amazon Linux 2023 latest AMI
+AMI_ID=$(aws ssm get-parameter \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
+  --query 'Parameter.Value' \
+  --output text)
+
+get_required_id() {
+  local label="$1"
+  local value="$2"
+
+  if [ "$value" = "None" ] || [ -z "$value" ]; then
+    echo "Error: $label not found. Please check previous setup scripts."
+    exit 1
+  fi
+
+  echo "$value"
+}
+
+echo "=== Caller Identity ==="
+aws sts get-caller-identity \
+  --profile "$PROFILE" \
+  --output table
+
+echo "=== Get Resource IDs ==="
+VPC_ID=$(aws ec2 describe-vpcs \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=tag:Name,Values="$VPC_NAME" \
+  --query 'Vpcs[0].VpcId' \
+  --output text)
+VPC_ID=$(get_required_id "VPC" "$VPC_ID")
+
+PRI01_ID=$(aws ec2 describe-subnets \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=tag:Name,Values="$PRIVATE_SUBNET_01_NAME" \
+  --query 'Subnets[0].SubnetId' \
+  --output text)
+PRI01_ID=$(get_required_id "Private Subnet 01" "$PRI01_ID")
+
+PRI02_ID=$(aws ec2 describe-subnets \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=tag:Name,Values="$PRIVATE_SUBNET_02_NAME" \
+  --query 'Subnets[0].SubnetId' \
+  --output text)
+PRI02_ID=$(get_required_id "Private Subnet 02" "$PRI02_ID")
+
+BASTION_ID=$(aws ec2 describe-instances \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=tag:Name,Values="$BASTION_INSTANCE_NAME" Name=instance-state-name,Values=running \
+  --query 'Reservations[0].Instances[0].InstanceId' \
+  --output text)
+BASTION_ID=$(get_required_id "Bastion Instance" "$BASTION_ID")
+
+BASTION_PUBLIC_IP=$(aws ec2 describe-instances \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --instance-ids "$BASTION_ID" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' \
+  --output text)
+BASTION_PUBLIC_IP=$(get_required_id "Bastion Public IP" "$BASTION_PUBLIC_IP")
+
+BASTION_SG_ID=$(aws ec2 describe-security-groups \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=vpc-id,Values="$VPC_ID" Name=group-name,Values="$BASTION_SG_NAME" \
+  --query 'SecurityGroups[0].GroupId' \
+  --output text)
+BASTION_SG_ID=$(get_required_id "Bastion Security Group" "$BASTION_SG_ID")
+
+ELB_SG_ID=$(aws ec2 describe-security-groups \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=vpc-id,Values="$VPC_ID" Name=group-name,Values="$ELB_SG_NAME" \
+  --query 'SecurityGroups[0].GroupId' \
+  --output text)
+ELB_SG_ID=$(get_required_id "ELB Security Group" "$ELB_SG_ID")
+
+echo "VPC: $VPC_ID"
+echo "Private Subnet 01: $PRI01_ID"
+echo "Private Subnet 02: $PRI02_ID"
+echo "Bastion Instance: $BASTION_ID"
+echo "Bastion Public IP: $BASTION_PUBLIC_IP"
+echo "Bastion Security Group: $BASTION_SG_ID"
+echo "ELB Security Group: $ELB_SG_ID"
+echo "AMI: $AMI_ID"
+
+echo "=== Create Web Security Group ==="
+WEB_SG_ID=$(aws ec2 create-security-group \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --group-name "$WEB_SG_NAME" \
+  --description "for web servers" \
+  --vpc-id "$VPC_ID" \
+  --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=$WEB_SG_NAME},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning}]" \
+  --query 'GroupId' \
+  --output text)
+
+aws ec2 authorize-security-group-ingress \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --group-id "$WEB_SG_ID" \
+  --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,UserIdGroupPairs=[{GroupId=$BASTION_SG_ID,Description='SSH from bastion'}]"
+
+aws ec2 authorize-security-group-ingress \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --group-id "$WEB_SG_ID" \
+  --ip-permissions "IpProtocol=tcp,FromPort=$APP_PORT,ToPort=$APP_PORT,UserIdGroupPairs=[{GroupId=$ELB_SG_ID,Description='Application traffic from ALB'}]"
+
+echo "Web Security Group: $WEB_SG_ID"
+
+echo "=== Launch Web Servers ==="
 WEB01_ID=$(aws ec2 run-instances \
-    --image-id ami-07b643b5e45e \
-    --count 1 \
-    --instance-type t2.micro \
-    --key-name nobu \
-    --subnet-id $PRI01_ID \
-    --no-associate-public-ip-address \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web01}]' \
-    --query 'Instances[0].InstanceId' \
-    --output text)
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --image-id "$AMI_ID" \
+  --count 1 \
+  --instance-type "$INSTANCE_TYPE" \
+  --key-name "$KEY_NAME" \
+  --security-group-ids "$WEB_SG_ID" \
+  --subnet-id "$PRI01_ID" \
+  --no-associate-public-ip-address \
+  --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$WEB01_NAME},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning}]" \
+  --query 'Instances[0].InstanceId' \
+  --output text)
 
 WEB02_ID=$(aws ec2 run-instances \
-    --image-id ami-07b643b5e45e \
-    --count 1 \
-    --instance-type t2.micro \
-    --key-name nobu \
-    --subnet-id $PRI02_ID \
-    --no-associate-public-ip-address \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=sample-ec2-web02}]' \
-    --query 'Instances[0].InstanceId' \
-    --output text)
-
-# 踏み台サーバーのIDも取得しておく
-BASTION_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=sample-ec2-bastion" --query 'Reservations[].Instances[].InstanceId' --output text)
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --image-id "$AMI_ID" \
+  --count 1 \
+  --instance-type "$INSTANCE_TYPE" \
+  --key-name "$KEY_NAME" \
+  --security-group-ids "$WEB_SG_ID" \
+  --subnet-id "$PRI02_ID" \
+  --no-associate-public-ip-address \
+  --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$WEB02_NAME},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning}]" \
+  --query 'Instances[0].InstanceId' \
+  --output text)
 
 echo "Created Web01: $WEB01_ID"
 echo "Created Web02: $WEB02_ID"
 
-# --- 追記箇所 ---
-echo "Configuring Security Group rules..."
-# Bastion(踏み台)のSG IDを取得
-BASTION_SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=sample-sg-bastion --query 'SecurityGroups[0].GroupId' --output text)
-# Default(Web用)のSG IDを取得
-DEFAULT_SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=default --query 'SecurityGroups[0].GroupId' --output text)
+echo "=== Wait for Web Servers to be running ==="
+aws ec2 wait instance-running \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --instance-ids "$WEB01_ID" "$WEB02_ID"
 
-# BastionからのSSH接続(Port 22)を許可
-aws ec2 authorize-security-group-ingress \
-    --group-id $DEFAULT_SG_ID \
-    --protocol tcp \
-    --port 22 \
-    --source-group $BASTION_SG_ID 2>/dev/null || echo "Rule already exists."
-# ----------------
+WEB_INFO=$(aws ec2 describe-instances \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --instance-ids "$WEB01_ID" "$WEB02_ID" \
+  --query 'Reservations[].Instances[].[Tags[?Key==`Name`].Value|[0],InstanceId,State.Name,PrivateIpAddress,SubnetId]' \
+  --output text)
 
-# --- 2. インスタンスの起動待機 ---
-# タグ検索で再取得するとNoneになるリスクがあるため、上記で取得したIDをそのまま使用します
-echo "Waiting for all instances to be running..."
-aws ec2 wait instance-running --instance-ids $BASTION_ID $WEB01_ID $WEB02_ID
+IP01=$(echo "$WEB_INFO" | awk '$1=="sample-ec2-web01"{print $4}')
+IP02=$(echo "$WEB_INFO" | awk '$1=="sample-ec2-web02"{print $4}')
 
-# LocalStackのメタデータ反映を確実にするため、少しだけ猶予を置く
-sleep 2
+echo "Web01 Private IP: $IP01"
+echo "Web02 Private IP: $IP02"
 
-# --- 3. ユーザーセットアップ ---
-# 確実に最新の状態を反映させるため、最新のインスタンスIDを再取得してループを回す
-CURRENT_INSTANCES=$(aws ec2 describe-instances --query 'Reservations[].Instances[].InstanceId' --output text)
+echo "=== SSH Commands via Bastion ==="
+echo "ssh -i $KEY_FILE -J ec2-user@$BASTION_PUBLIC_IP ec2-user@$IP01"
+echo "ssh -i $KEY_FILE -J ec2-user@$BASTION_PUBLIC_IP ec2-user@$IP02"
 
-for id in $CURRENT_INSTANCES; do
-    echo "Processing $id..."
-    # Ubuntuホスト側の setup_user.sh を実行
-    ssh nobu@192.168.40.100 "bash ~/setup_user.sh $id"
-done
-# --- 4. BastionのSSHポート更新 (.ssh/config) ---
-# Docker経由のポートマッピングを取得
-NEW_PORT=$(ssh nobu@192.168.40.100 "docker ps" | grep "$BASTION_ID" | sed -E 's/.*:([0-9]+)->22.*/\1/')
-
-if [ -n "$NEW_PORT" ]; then
-    sed -i '' -e "/Host bastion/,/Port/ s/Port [0-9]*/Port $NEW_PORT/" ~/.ssh/config
-    echo " Success! Bastion Config updated to Port $NEW_PORT"
-else
-    echo " Error: Could not find port for ID $BASTION_ID"
-fi
-
-# --- 5. SSHホストキーの掃除 ---
-echo "Cleaning up old SSH host keys..."
-# 踏み台(Ubuntu側)のIPと、各コンテナの内部想定IPを掃除
-ssh-keygen -R 192.168.40.100 > /dev/null 2>&1
-for ip in 172.17.0.3 172.17.0.4 172.17.0.5; do
-    ssh-keygen -R $ip > /dev/null 2>&1
-done
-
-# --- 6. WebサーバーのプライベートIP取得と config 更新 ---
-# describe-instancesの結果を1回で取得して、タイミング問題を回避
-WEB_INFO=$(aws ec2 describe-instances --instance-ids $WEB01_ID $WEB02_ID --query 'Reservations[].Instances[].[Tags[?Key==`Name`].Value | [0], PrivateIpAddress]' --output text)
-
-IP01=$(echo "$WEB_INFO" | grep "sample-ec2-web01" | awk '{print $2}')
-IP02=$(echo "$WEB_INFO" | grep "sample-ec2-web02" | awk '{print $2}')
-
-if [ -n "$IP01" ]; then sed -i '' -e "/Host web01/,/HostName/ s/HostName .*/HostName $IP01/" ~/.ssh/config; fi
-if [ -n "$IP02" ]; then sed -i '' -e "/Host web02/,/HostName/ s/HostName .*/HostName $IP02/" ~/.ssh/config; fi
-
-echo "-------------------------------------------"
-echo " Web01 IP: $IP01"
-echo " Web02 IP: $IP02"
-echo " .ssh/config updated successfully."
-echo "-------------------------------------------"
-
-# 最終確認の表示
+echo "=== Describe Web Instances ==="
 aws ec2 describe-instances \
-    --instance-ids $BASTION_ID $WEB01_ID $WEB02_ID \
-    --query 'Reservations[*].Instances[*].{Name:Tags[?Key==`Name`].Value | [0], Status:State.Name, PrivateIP:PrivateIpAddress}' \
-    --output table
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --instance-ids "$WEB01_ID" "$WEB02_ID" \
+  --query 'Reservations[*].Instances[*].{Name:Tags[?Key==`Name`].Value|[0],ID:InstanceId,State:State.Name,Type:InstanceType,PrivateIP:PrivateIpAddress,PublicIP:PublicIpAddress,Subnet:SubnetId}' \
+  --output table
+
+echo "=== SSH config block ==="
+cat <<EOF
+Host bastion
+  HostName $BASTION_PUBLIC_IP
+  User ec2-user
+  IdentityFile $(pwd)/$KEY_FILE
+  IdentitiesOnly yes
+
+Host web01
+  HostName $IP01
+  User ec2-user
+  IdentityFile $(pwd)/$KEY_FILE
+  IdentitiesOnly yes
+  ProxyJump bastion
+
+Host web02
+  HostName $IP02
+  User ec2-user
+  IdentityFile $(pwd)/$KEY_FILE
+  IdentitiesOnly yes
+  ProxyJump bastion
+EOF
+
