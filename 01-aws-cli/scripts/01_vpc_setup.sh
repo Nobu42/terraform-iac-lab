@@ -1,25 +1,49 @@
 #!/bin/bash
+set -euo pipefail
 
-# VPCの作成とタグ付与を同時に実行
-# 作成時にタグを付ける
+PROFILE="learning"
+REGION="ap-northeast-1"
+VPC_NAME="sample-vpc"
+VPC_CIDR="10.0.0.0/16"
+
+# LocalStack向けの設定が残っていても実AWSへ向ける
+unalias aws 2>/dev/null || true
+unset AWS_ENDPOINT_URL
+unset LOCALSTACK_HOST
+
+echo "=== Caller Identity ==="
+aws sts get-caller-identity \
+  --profile "$PROFILE" \
+  --output table
+
+echo "=== Create VPC ==="
 VPC_ID=$(aws ec2 create-vpc \
-    --cidr-block 10.0.0.0/16 \
-    --instance-tenancy default \
-    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=sample-vpc}]' \
-    --query 'Vpc.VpcId' \
-    --output text)
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --cidr-block "$VPC_CIDR" \
+  --instance-tenancy default \
+  --tag-specifications "ResourceType=vpc,Tags=[{Key=Name,Value=$VPC_NAME},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning}]" \
+  --query 'Vpc.VpcId' \
+  --output text)
 
-# 2. 作成されたIDの確認
 echo "New VPC ID: $VPC_ID"
 
-# 3. DNSサポートの有効化（ALBやRDSを使う際に重要！）
-# ※LocalStackでもこれを有効にしておくと、本番環境に近い挙動になる
-aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames '{"Value":true}'
-aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-support '{"Value":true}'
+aws ec2 modify-vpc-attribute \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --vpc-id "$VPC_ID" \
+  --enable-dns-hostnames '{"Value":true}'
 
-# 4. 最終確認
-# ID、名前、状態、DNS設定を一覧で表示
+aws ec2 modify-vpc-attribute \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --vpc-id "$VPC_ID" \
+  --enable-dns-support '{"Value":true}'
+
 aws ec2 describe-vpcs \
-    --vpc-ids $VPC_ID \
-    --query 'Vpcs[*].{ID:VpcId, Name:Tags[?Key==`Name`].Value | [0], CIDR:CidrBlock, DNSHost:EnableDnsHostnames.Value}' \
-    --output table
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --vpc-ids "$VPC_ID" \
+  --query 'Vpcs[*].{ID:VpcId,Name:Tags[?Key==`Name`].Value|[0],CIDR:CidrBlock,State:State,DNSHost:EnableDnsHostnames.Value,DNSSupport:EnableDnsSupport.Value}' \
+  --output table
+
