@@ -58,4 +58,14 @@ aws ec2 describe-subnets \
 |  ap-northeast-1a|  10.0.64.0/20 |  subnet-02ec7b661d0076e20  |  sample-subnet-private01  |  False    |
 +-----------------+---------------+----------------------------+---------------------------+-----------+
 ```
+### 学んだこと
+* *SubnetはVPCのCIDR範囲内で作成する必要がある*
+* *Public SubnetとPrivate Subnetの違いは、サブネット単体ではなく、主にルートテーブルとPublic IP自動割当の設定で決まる*
+* *map-public-ip-on-launch を有効にすると、そのSubnetで起動したEC2にPublic IPを自動割当できる*
+* *複数AZにSubnetを分散することで、ALBやRDS Multi-AZなどの高可用構成につなげられる*
+* *Nameタグだけでなく、Type=public / Type=private のようなタグを付けると、後続の確認や管理がしやすい*
 
+### 注意事項
+同じスクリプトを複数回実行すると、同じNameタグを持つSubnetが重複して作成される。
+
+実AWSで作業する場合は、実行前に対象VPCと既存Subnetを確認する。
