@@ -18,6 +18,7 @@ VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、E
 
 ## 学習ステップ
 
+0. [初期設定](./notes/00_aws_cli_initial_setup.md)
 1. [VPC 構築](./notes/01_vpc_setup.md)
 2. [サブネット設計](./notes/02_subnet_setup.md)
 3. [Internet Gateway 設定](./notes/03_internetgateway_setup.md)
