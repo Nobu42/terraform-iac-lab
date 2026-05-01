@@ -35,6 +35,7 @@ VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、E
 - [設計仕様書](../docs/Design_Specification.md)
 - [AWS CLI コマンドメモ](../docs/aws_commands.md)
 - [ネットワーク構成図](../docs/Network_Architecture.png)
+- [保守・運用計画](../docs/Operation_Design.md)
 
 ## 注意事項
 
