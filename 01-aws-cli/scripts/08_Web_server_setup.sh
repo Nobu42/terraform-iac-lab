@@ -1,9 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+# 使用するAWS CLIプロファイルとリージョン。
+# "learning" には作業用IAMユーザーの認証情報を設定している。
 PROFILE="learning"
 REGION="ap-northeast-1"
 
+# Webサーバー作成で参照するリソース名。
+# WebサーバーはPrivate Subnetに配置し、Bastion経由でSSHする。
 VPC_NAME="sample-vpc"
 PRIVATE_SUBNET_01_NAME="sample-subnet-private01"
 PRIVATE_SUBNET_02_NAME="sample-subnet-private02"
@@ -12,19 +16,28 @@ BASTION_SG_NAME="sample-sg-bastion"
 ELB_SG_NAME="sample-sg-elb"
 WEB_SG_NAME="sample-sg-web"
 
+# EC2で使うKey Pair名と秘密鍵ファイル。
+# Bastion作成時に作ったKey PairをWebサーバーでも使う。
 KEY_NAME="nobu"
 KEY_FILE="${KEY_NAME}.pem"
+
+# WebサーバーのインスタンスタイプとNameタグ。
 INSTANCE_TYPE="t3.micro"
 WEB01_NAME="sample-ec2-web01"
 WEB02_NAME="sample-ec2-web02"
+
+# ALBからWebサーバーへ転送するアプリケーション用ポート。
+# 後続のALB設定でもこのポートを使う。
 APP_PORT="3000"
 
-# LocalStack向け設定が残っていても実AWSへ向ける
+# LocalStack用のaliasや環境変数が残っていると、実AWSではなくLocalStackへ接続してしまう。
+# 実AWSで作業するため、念のためここで無効化する。
 unalias aws 2>/dev/null || true
 unset AWS_ENDPOINT_URL
 unset LOCALSTACK_HOST
 
-# Amazon Linux 2023 latest AMI
+# Amazon Linux 2023の最新AMI IDをSSM Parameter Storeから取得する。
+# AMI IDはリージョンや時期で変わるため、固定値ではなくAWS管理のパラメータから取得する。
 AMI_ID=$(aws ssm get-parameter \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -32,6 +45,8 @@ AMI_ID=$(aws ssm get-parameter \
   --query 'Parameter.Value' \
   --output text)
 
+# 取得したIDが空、または None の場合にスクリプトを止めるための関数。
+# 必要なリソースが見つからないままEC2作成へ進むのを防ぐ。
 get_required_id() {
   local label="$1"
   local value="$2"
@@ -45,11 +60,17 @@ get_required_id() {
 }
 
 echo "=== Caller Identity ==="
+
+# いま操作しているAWSアカウントとIAMユーザーを確認する。
+# EC2は課金対象なので、作成前に操作先アカウントを必ず確認する。
 aws sts get-caller-identity \
   --profile "$PROFILE" \
   --output table
 
 echo "=== Get Resource IDs ==="
+
+# VPC IDを取得する。
+# Security Group取得やEC2配置先確認に使う。
 VPC_ID=$(aws ec2 describe-vpcs \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -58,6 +79,7 @@ VPC_ID=$(aws ec2 describe-vpcs \
   --output text)
 VPC_ID=$(get_required_id "VPC" "$VPC_ID")
 
+# Web01を配置するPrivate Subnet 01のIDを取得する。
 PRI01_ID=$(aws ec2 describe-subnets \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -66,6 +88,7 @@ PRI01_ID=$(aws ec2 describe-subnets \
   --output text)
 PRI01_ID=$(get_required_id "Private Subnet 01" "$PRI01_ID")
 
+# Web02を配置するPrivate Subnet 02のIDを取得する。
 PRI02_ID=$(aws ec2 describe-subnets \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -74,6 +97,8 @@ PRI02_ID=$(aws ec2 describe-subnets \
   --output text)
 PRI02_ID=$(get_required_id "Private Subnet 02" "$PRI02_ID")
 
+# 起動中のBastion EC2を取得する。
+# WebサーバーへのSSHはBastion経由で行うため、Bastionが起動している必要がある。
 BASTION_ID=$(aws ec2 describe-instances \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -82,6 +107,8 @@ BASTION_ID=$(aws ec2 describe-instances \
   --output text)
 BASTION_ID=$(get_required_id "Bastion Instance" "$BASTION_ID")
 
+# BastionのPublic IPを取得する。
+# SSHのProxyJump先として使う。
 BASTION_PUBLIC_IP=$(aws ec2 describe-instances \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -90,6 +117,8 @@ BASTION_PUBLIC_IP=$(aws ec2 describe-instances \
   --output text)
 BASTION_PUBLIC_IP=$(get_required_id "Bastion Public IP" "$BASTION_PUBLIC_IP")
 
+# Bastion用Security GroupのIDを取得する。
+# Webサーバー側のSecurity Groupで、このSGからのSSHだけを許可する。
 BASTION_SG_ID=$(aws ec2 describe-security-groups \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -98,6 +127,8 @@ BASTION_SG_ID=$(aws ec2 describe-security-groups \
   --output text)
 BASTION_SG_ID=$(get_required_id "Bastion Security Group" "$BASTION_SG_ID")
 
+# ELB用Security GroupのIDを取得する。
+# Webサーバー側のSecurity Groupで、このSGからのアプリ通信だけを許可する。
 ELB_SG_ID=$(aws ec2 describe-security-groups \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -106,6 +137,7 @@ ELB_SG_ID=$(aws ec2 describe-security-groups \
   --output text)
 ELB_SG_ID=$(get_required_id "ELB Security Group" "$ELB_SG_ID")
 
+# 取得した値を表示し、想定したリソースを使うことを確認する。
 echo "VPC: $VPC_ID"
 echo "Private Subnet 01: $PRI01_ID"
 echo "Private Subnet 02: $PRI02_ID"
@@ -116,6 +148,9 @@ echo "ELB Security Group: $ELB_SG_ID"
 echo "AMI: $AMI_ID"
 
 echo "=== Create Web Security Group ==="
+
+# Webサーバー用のSecurity Groupを作成する。
+# SSHはBastionからのみ、アプリ通信はALBからのみ許可する。
 WEB_SG_ID=$(aws ec2 create-security-group \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -126,12 +161,16 @@ WEB_SG_ID=$(aws ec2 create-security-group \
   --query 'GroupId' \
   --output text)
 
+# Bastion SGからのSSH接続だけを許可する。
+# 送信元にCIDRではなくSecurity Groupを指定している点がポイント。
 aws ec2 authorize-security-group-ingress \
   --profile "$PROFILE" \
   --region "$REGION" \
   --group-id "$WEB_SG_ID" \
   --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,UserIdGroupPairs=[{GroupId=$BASTION_SG_ID,Description='SSH from bastion'}]"
 
+# ALB SGからのアプリケーション通信だけを許可する。
+# 後続のALB Target Groupでは、このポートへ転送する想定。
 aws ec2 authorize-security-group-ingress \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -141,6 +180,9 @@ aws ec2 authorize-security-group-ingress \
 echo "Web Security Group: $WEB_SG_ID"
 
 echo "=== Launch Web Servers ==="
+
+# Web01をPrivate Subnet 01に起動する。
+# Public IPは付与しないため、外部から直接SSHできない。
 WEB01_ID=$(aws ec2 run-instances \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -155,6 +197,8 @@ WEB01_ID=$(aws ec2 run-instances \
   --query 'Instances[0].InstanceId' \
   --output text)
 
+# Web02をPrivate Subnet 02に起動する。
+# Web01とは別AZのPrivate Subnetに配置している。
 WEB02_ID=$(aws ec2 run-instances \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -173,11 +217,15 @@ echo "Created Web01: $WEB01_ID"
 echo "Created Web02: $WEB02_ID"
 
 echo "=== Wait for Web Servers to be running ==="
+
+# Webサーバー2台が running になるまで待つ。
+# 起動完了前にPrivate IPを取得したりSSHしようとすると失敗することがある。
 aws ec2 wait instance-running \
   --profile "$PROFILE" \
   --region "$REGION" \
   --instance-ids "$WEB01_ID" "$WEB02_ID"
 
+# Webサーバー2台のName、Instance ID、状態、Private IP、Subnet IDを取得する。
 WEB_INFO=$(aws ec2 describe-instances \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -185,17 +233,28 @@ WEB_INFO=$(aws ec2 describe-instances \
   --query 'Reservations[].Instances[].[Tags[?Key==`Name`].Value|[0],InstanceId,State.Name,PrivateIpAddress,SubnetId]' \
   --output text)
 
+# 取得した一覧から、Web01のPrivate IPだけを取り出す。
 IP01=$(echo "$WEB_INFO" | awk '$1=="sample-ec2-web01"{print $4}')
+
+# 取得した一覧から、Web02のPrivate IPだけを取り出す。
 IP02=$(echo "$WEB_INFO" | awk '$1=="sample-ec2-web02"{print $4}')
 
 echo "Web01 Private IP: $IP01"
 echo "Web02 Private IP: $IP02"
 
 echo "=== SSH Commands via Bastion ==="
+
+# Bastionを踏み台にしてWeb01へSSHするコマンドを表示する。
+# -J は ProxyJump の指定。
 echo "ssh -i $KEY_FILE -J ec2-user@$BASTION_PUBLIC_IP ec2-user@$IP01"
+
+# Bastionを踏み台にしてWeb02へSSHするコマンドを表示する。
 echo "ssh -i $KEY_FILE -J ec2-user@$BASTION_PUBLIC_IP ec2-user@$IP02"
 
 echo "=== Describe Web Instances ==="
+
+# 作成したWebサーバー2台の状態を確認する。
+# PublicIPが None で、PrivateIPが割り当てられていればPrivate Subnet配置として期待通り。
 aws ec2 describe-instances \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -204,6 +263,9 @@ aws ec2 describe-instances \
   --output table
 
 echo "=== SSH config block ==="
+
+# ~/.ssh/config に貼り付けるための設定例を表示する。
+# 個人環境のSSH設定をスクリプトで直接変更せず、確認してから手動で反映する。
 cat <<EOF
 Host bastion
   HostName $BASTION_PUBLIC_IP
