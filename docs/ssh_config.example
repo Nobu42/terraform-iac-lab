@@ -1,0 +1,13 @@
+Host bastion
+  HostName <Bastion Public IP>
+  User ec2-user
+  IdentityFile /path/to/nobu.pem
+  IdentitiesOnly yes
+
+Host web01
+  HostName <Web01 Private IP>
+  User ec2-user
+  IdentityFile /path/to/nobu.pem
+  IdentitiesOnly yes
+  ProxyJump bastion
+
