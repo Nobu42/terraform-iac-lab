@@ -29,7 +29,7 @@ VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、E
 8. [Webサーバー構築](./notes/08_web_server_setup.md)
 9. [ALB 構築](./notes/09_LoadBalancer_setup.md)
 10. [RDS 構築](./notes/10_Database_setup.md)
-11.[S3 作成](./notes/11_s3_setup.md)
+11. [S3 作成](./notes/11_s3_setup.md)
 
 ## 関連ドキュメント
 
