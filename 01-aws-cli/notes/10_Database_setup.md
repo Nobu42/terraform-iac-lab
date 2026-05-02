@@ -132,6 +132,121 @@ DB用Security Groupでは、Webサーバー用Security GroupからのMySQL接続
 | :--- | :--- | :--- |
 | MySQL | 3306/tcp | sample-sg-web |
 
+## WebサーバーからのRDS接続確認
+
+RDS作成後、Private Subnet上のWebサーバーからRDS MySQLへ接続できることを確認した。
+
+確認は `web01` にSSH接続して実施した。
+
+```bash
+ssh web01
+```
+
+Amazon Linux 2023では、書籍などで使われることがある `mysql` パッケージ名ではインストールできない場合がある。
+
+```bash
+sudo yum -y install mysql
+```
+
+実行結果:
+
+```text
+No match for argument: mysql
+Error: Unable to find a match: mysql
+```
+
+利用可能なMariaDB/MySQL関連パッケージを確認する。
+
+```bash
+sudo dnf search mariadb
+```
+
+MySQL互換クライアントとして `mariadb105` をインストールする。
+
+```bash
+sudo dnf -y install mariadb105
+```
+
+インストール後、`mysql` コマンドが使えることを確認する。
+
+```bash
+mysql --version
+```
+
+確認結果:
+
+```text
+mysql  Ver 15.1 Distrib 10.5.29-MariaDB, for Linux (x86_64)
+```
+
+RDSのエンドポイントを確認する。
+
+```bash
+aws rds describe-db-instances \
+  --profile learning \
+  --region ap-northeast-1 \
+  --db-instance-identifier sample-db \
+  --query 'DBInstances[0].Endpoint.Address' \
+  --output text
+```
+
+`web01` からRDS MySQLへ接続確認する。
+
+```bash
+mysqladmin ping \
+  -u adminuser \
+  -p \
+  -h <RDS Endpoint>
+```
+
+確認結果:
+
+```text
+mysqld is alive
+```
+
+この結果により、`web01` からRDS MySQLへ接続できることを確認した。
+
+```text
+web01
+  -> sample-sg-web
+  -> sample-sg-db
+  -> RDS MySQL :3306
+```
+
+## 接続確認で詰まった点
+
+最初に誤ったRDSエンドポイントを指定したため、以下のエラーが発生した。
+
+```text
+Unknown MySQL server host
+```
+
+これはSecurity Groupやポートの問題ではなく、ホスト名の名前解決に失敗している状態である。
+
+RDSのエンドポイントは手入力せず、以下のコマンドで取得した値を使う。
+
+```bash
+aws rds describe-db-instances \
+  --profile learning \
+  --region ap-northeast-1 \
+  --db-instance-identifier sample-db \
+  --query 'DBInstances[0].Endpoint.Address' \
+  --output text
+```
+
+また、スクリプトではDBユーザー名を以下のように設定している。
+
+```bash
+DB_MASTER_USERNAME="adminuser"
+```
+
+そのため、接続確認時のユーザー名も `adminuser` を使用する。
+
+```bash
+mysqladmin ping -u adminuser -p -h <RDS Endpoint>
+```
+
 ## 学んだこと
 
 - RDSはマネージドなリレーショナルデータベースサービスである
@@ -142,6 +257,10 @@ DB用Security Groupでは、Webサーバー用Security GroupからのMySQL接続
 - DBパスワードはスクリプトに直書きせず、環境変数などで渡す
 - RDSは作成完了まで時間がかかるため、`aws rds wait db-instance-available` で待機する
 - Terraform化する場合、DB Subnet Group、Security Group、Parameter Group、Option Group、DB Instanceの依存関係を整理する必要がある
+- Amazon Linux 2023では、`mysql` というパッケージ名でMySQLクライアントをインストールできない場合がある
+- RDS MySQLへの接続確認には、MariaDBクライアントを利用できる
+- `Unknown MySQL server host` は、主にRDSエンドポイント名の誤りやDNS解決失敗を示す
+- `mysqld is alive` が表示されれば、MySQLサーバーへの接続確認は成功している
 
 ## 注意事項
 
