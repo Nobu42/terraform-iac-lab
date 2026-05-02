@@ -92,7 +92,7 @@ WEB02_ID=$(aws ec2 describe-instances \
 WEB02_ID=$(get_required_id "Web02 Instance" "$WEB02_ID")
 
 # ALBに関連付けるSecurity Groupを取得する。
-# このSGではHTTP/HTTPSを外部から受ける設定にしている。
+# このSGは、前の手順でインターネットからのHTTP/HTTPSを許可している。
 SG_ELB_ID=$(aws ec2 describe-security-groups \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -120,9 +120,10 @@ TG_ARN=$(aws elbv2 create-target-group \
   --vpc-id "$VPC_ID" \
   --health-check-protocol HTTP \
   --health-check-path / \
-  --tag-specifications "ResourceType=targetgroup,Tags=[{Key=Name,Value=$TARGET_GROUP_NAME},{Key=Project,Value=terraform-iac-lab},{Key=Environment,Value=learning}]" \
+  --tags Key=Name,Value="$TARGET_GROUP_NAME" Key=Project,Value=terraform-iac-lab Key=Environment,Value=learning \
   --query 'TargetGroups[0].TargetGroupArn' \
   --output text)
+
 
 echo "Target Group Created: $TG_ARN"
 

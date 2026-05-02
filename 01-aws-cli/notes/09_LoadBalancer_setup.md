@@ -1,174 +1,276 @@
-# LoadBalancer 作成
+# 09 Load Balancer Setup
 
-## 1. インフラ設計
+## 目的
 
-### Application Load Balancer (ALB) 設計
-| 項目 | 設定内容 |
+AWS CLIでApplication Load Balancerを作成し、Private Subnet上のWebサーバー2台へHTTPリクエストを振り分ける。
+
+ALBはPublic Subnetに配置し、インターネットからのHTTPアクセスを受け付ける。受け取ったリクエストはListenerの設定に従ってTarget Groupへ転送し、Target Groupに登録されたWeb01/Web02の3000番ポートへ振り分ける。
+
+## 実行環境
+
+この手順は以下の環境で検証しています。
+
+- 実行環境: 実AWS
+- リージョン: ap-northeast-1
+- AWS CLI: v2
+- 対象リソース: Target Group, Application Load Balancer, Listener
+- 前提:
+  - `sample-vpc` が作成済みであること
+  - `sample-subnet-public01` が作成済みであること
+  - `sample-subnet-public02` が作成済みであること
+  - `sample-ec2-web01` が起動済みであること
+  - `sample-ec2-web02` が起動済みであること
+  - `sample-sg-elb` が作成済みであること
+  - `sample-sg-web` で `sample-sg-elb` からの3000/tcpを許可していること
+  - Webサーバー上で3000番ポートのHTTPサーバーが起動していること
+
+## 設計値
+
+| 項目 | 値 |
 | :--- | :--- |
-| **名前** | `sample-elb` |
-| **スキーム** | `internet-facing` (インターネット向け) |
-| **タイプ** | `application` |
-| **サブネット** | `public01`, `public02` (マルチAZ構成) |
-| **セキュリティグループ** | `sample-sg-elb` (80/443許可) |
+| ALB名 | sample-elb |
+| ALB種別 | Application Load Balancer |
+| Scheme | internet-facing |
+| 配置先Subnet | sample-subnet-public01, sample-subnet-public02 |
+| Security Group | sample-sg-elb |
+| Listener | HTTP:80 |
+| Target Group | sample-tg |
+| Target Type | instance |
+| Target Protocol | HTTP |
+| Target Port | 3000 |
+| Health Check Path | / |
 
-### ターゲットグループ (Target Group) 設計
-| 項目 | 設定内容 |
-| :--- | :--- |
-| **名前** | `sample-tg` |
-| **プロトコル** | `HTTP` |
-| **ポート** | `3000` (アプリケーション待機ポート) |
-| **ターゲット** | `sample-ec2-web01`, `sample-ec2-web02` |
-| **ヘルスチェックパス** | `/` |
+## Security Group設計
 
-## 2. 実装のポイント（多段防御の設定）
+| Security Group | 用途 | 許可する通信 | 送信元 |
+| :--- | :--- | :--- | :--- |
+| sample-sg-elb | ALB | HTTP 80/tcp | 0.0.0.0/0 |
+| sample-sg-elb | ALB | HTTPS 443/tcp | 0.0.0.0/0 |
+| sample-sg-web | Webサーバー | App 3000/tcp | sample-sg-elb |
 
-* **SG連携**: WebサーバーのSGに対して、IP帯(CIDR)ではなく**ALBのSG IDをソースとして**通信を許可。これにより、ALBを経由しない不正な直接アクセスを遮断する。
-* **マルチAZ冗長化**: パブリックサブネット2系統にまたがってALBを配置し、可用性を確保。
+## 通信経路
 
-## 3. セットアップスクリプト
-
-```
-#!/bin/bash
-
-# --- 1. 必要な ID を再取得 ---
-VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=sample-vpc --query 'Vpcs[0].VpcId' --output text)
-PUB01_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public01 --query 'Subnets[0].SubnetId' --output text)
-PUB02_ID=$(aws ec2 describe-subnets --filters Name=tag:Name,Values=sample-subnet-public02 --query 'Subnets[0].SubnetId' --output text)
-
-# ここで None になるのを防ぐため、IDが見つかるまで数秒待つか、エラー終了させる
-WEB01_ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=sample-ec2-web01 --query 'Reservations[0].Instances[0].InstanceId' --output text)
-WEB02_ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=sample-ec2-web02 --query 'Reservations[0].Instances[0].InstanceId' --output text)
-
-if [ "$WEB01_ID" == "None" ] || [ -z "$WEB01_ID" ]; then
-    echo "Error: Web01 ID not found. Check if 08_Web_server_setup.sh succeeded."
-    exit 1
-fi
-
-# --- 2. ターゲットグループを作成 ---
-TG_ARN=$(aws elbv2 create-target-group \
-    --name sample-tg \
-    --protocol HTTP \
-    --port 3000 \
-    --vpc-id $VPC_ID \
-    --health-check-protocol HTTP \
-    --health-check-path / \
-    --query 'TargetGroups[0].TargetGroupArn' \
-    --output text)
-
-echo " Target Group Created: $TG_ARN"
-
-# --- 3. Webサーバーを登録 ---
-aws elbv2 register-targets \
-    --target-group-arn $TG_ARN \
-    --targets Id=$WEB01_ID Id=$WEB02_ID
-
-echo " Web01 and Web02 registered to Target Group."
-
-# --- 4. LB用セキュリティグループの ID を取得 ---
-SG_ELB_ID=$(aws ec2 describe-security-groups \
-    --filters Name=group-name,Values=sample-sg-elb \
-    --query 'SecurityGroups[0].GroupId' --output text)
-
-# --- 5. ロードバランサー（ALB）本体の作成 ---
-LB_ARN=$(aws elbv2 create-load-balancer \
-    --name sample-elb \
-    --subnets $PUB01_ID $PUB02_ID \
-    --security-groups $SG_ELB_ID \
-    --scheme internet-facing \
-    --type application \
-    --query 'LoadBalancers[0].LoadBalancerArn' \
-    --output text)
-
-echo " Load Balancer Created: $LB_ARN"
-
-# --- 6. リスナーの作成 ---
-echo "Creating Listener (Port 80)..."
-aws elbv2 create-listener \
-    --load-balancer-arn $LB_ARN \
-    --protocol HTTP \
-    --port 80 \
-    --default-actions Type=forward,TargetGroupArn=$TG_ARN
-
-# --- 7. セキュリティグループの適用 (書籍の設計通り default SG を利用) ---
-
-# Web01 が今着ている SG ID を取得
-SG_CURRENT_ID=$(aws ec2 describe-instances \
-    --instance-ids $WEB01_ID \
-    --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
-    --output text)
-
-# もし LocalStack のメタデータ反映遅延で None が返った場合のセーフティネット
-if [ "$SG_CURRENT_ID" == "None" ] || [ -z "$SG_CURRENT_ID" ]; then
-    echo " Warning: Instance SG not found via describe-instances. Fetching VPC default SG..."
-    SG_CURRENT_ID=$(aws ec2 describe-security-groups \
-        --filters Name=vpc-id,Values=$VPC_ID Name=group-name,Values=default \
-        --query 'SecurityGroups[0].GroupId' --output text)
-fi
-
-echo " Target Web SG ID: $SG_CURRENT_ID"
-
-# その SG に対して ALB からの通信を許可 (Port 3000)
-echo " Allowing traffic from LB SG ($SG_ELB_ID) to Web SG ($SG_CURRENT_ID) on Port 3000..."
-
-aws ec2 authorize-security-group-ingress \
-    --group-id $SG_CURRENT_ID \
-    --protocol tcp \
-    --port 3000 \
-    --source-group $SG_ELB_ID 2>/dev/null || echo " Rule already exists or skipped."
-
-# --- 8. 完了表示 ---
-echo "------------------------------------------------"
-echo " Setup Complete!"
-echo "------------------------------------------------"
-echo " Access URL:"
-echo " http://sample-elb.elb.localhost.localstack.cloud:4566"
-echo "------------------------------------------------"
+```text
+Browser
+  -> ALB :80
+  -> Listener :80
+  -> Target Group sample-tg
+  -> Web01 / Web02 :3000
 ```
 
-## 4. 疎通確認手順
+## スクリプト
 
-構築したALBを経由して、Private Subnet内のWebサーバーにアクセスできるか確認する。
+- [09_LoadBalancer_setup.sh](../scripts/09_LoadBalancer_setup.sh)
 
-### 4.1 Webサーバー側での準備（ダミーサーバー起動）
-Webサーバー（例：Web01）にログインし、テスト用のHTMLファイルを作成して簡易サーバーを起動する。
+## 実行コマンド
 
 ```bash
-# Webサーバー内で実行
-echo "Hello from WebServer 01 (Python 2.7)" > index.html
-
-# Amazon Linux 2 (Python 2.7系) の場合の起動コマンド
-python -m SimpleHTTPServer 3000
+./09_LoadBalancer_setup.sh
 ```
 
-### 4.2 Mac側でのトンネル疎通（L7ルーティング）
+## 確認コマンド
 
-LocalStackのALBは名前解決（Hostヘッダー）を利用するため、以下の手順でMacからの経路を確保する。
+ALBのDNS名を確認する。
 
-#### ① SSHトンネルの構築
-
-Macの4566番ポートを、LocalStackが動いているUbuntuの4566番へ転送する。
-```
-# Macの別ターミナルで実行（疎通確認中は維持すること）
-ssh -L 4566:localhost:4566 nobu@192.168.40.100
-```
-
-#### ② Macのhosts設定
-
-ブラウザからの名前解決を有効にするため、ALBのDNS名をlocalhostに向ける。
-```
-# Macで実行
-echo "127.0.0.1 sample-elb.elb.localhost.localstack.cloud" | sudo tee -a /etc/hosts
+```bash
+aws elbv2 describe-load-balancers \
+  --profile learning \
+  --region ap-northeast-1 \
+  --names sample-elb \
+  --query 'LoadBalancers[0].DNSName' \
+  --output text
 ```
 
-#### ④ curl、ブラウザでの最終確認
+Target Group ARNを取得する。
 
-curlで実行
+```bash
+TG_ARN=$(aws elbv2 describe-target-groups \
+  --profile learning \
+  --region ap-northeast-1 \
+  --names sample-tg \
+  --query 'TargetGroups[0].TargetGroupArn' \
+  --output text)
 ```
-# Macで実行
-curl -v http://localhost:4566 -H "Host: sample-elb.elb.localhost.localstack.cloud"
+
+Target Healthを確認する。
+
+```bash
+aws elbv2 describe-target-health \
+  --profile learning \
+  --region ap-northeast-1 \
+  --target-group-arn "$TG_ARN" \
+  --query 'TargetHealthDescriptions[*].{Target:Target.Id,Port:Target.Port,State:TargetHealth.State,Reason:TargetHealth.Reason,Description:TargetHealth.Description}' \
+  --output table
 ```
 
-以下のURLをブラウザで開き、「Hello from WebServer 01」が表示されれば成功。
+ALBの状態を確認する。
 
-http://sample-elb.elb.localhost.localstack.cloud:4566
+```bash
+aws elbv2 describe-load-balancers \
+  --profile learning \
+  --region ap-northeast-1 \
+  --names sample-elb \
+  --query 'LoadBalancers[*].{Name:LoadBalancerName,DNSName:DNSName,State:State.Code,Scheme:Scheme,Type:Type,VpcId:VpcId}' \
+  --output table
+```
+
+## Webサーバーの簡易HTTP起動
+
+ALBの疎通確認用に、Web01/Web02でPythonの簡易HTTPサーバーを3000番ポートで起動した。
+
+```bash
+echo "Hello World!" > index.html
+python3 -m http.server 3000
+```
+
+Python 3では、Python 2の `SimpleHTTPServer` は利用できない。
+Amazon Linux 2023では以下を使う。
+
+```bash
+python3 -m http.server 3000
+```
+
+バックグラウンドで起動する場合:
+
+```bash
+nohup python3 -m http.server 3000 > server.log 2>&1 &
+```
+
+確認:
+
+```bash
+ss -lntp | grep 3000
+```
+
+## ALB疎通確認
+
+ALBのDNS名へブラウザからアクセスし、Private Subnet上のWebサーバー2台へリクエストが振り分けられることを確認した。
+
+```text
+http://<ALB DNS名>
+```
+
+確認できたレスポンス例:
+
+```html
+<html>
+  <body>
+    <h1>Hello World!</h1>
+  </body>
+</html>
+```
+
+```html
+<html>
+  <body>
+    <h1>Hello World! from Web02!</h1>
+  </body>
+</html>
+```
+
+Web01とWeb02で異なるHTMLを返すことで、ALBがTarget Group内の複数インスタンスへリクエストを振り分けていることを確認した。
+
+## 実AWSでの実行結果
+
+ALB、Target Group、Listenerを作成し、Web01/Web02をTarget Groupへ登録した。
+
+| 項目 | 結果 |
+| :--- | :--- |
+| ALB | 作成済み |
+| Listener | HTTP:80 |
+| Target Group | sample-tg |
+| Target Port | 3000 |
+| Web01 Target Health | healthy |
+| Web02 Target Health | healthy |
+| ブラウザ疎通 | 確認済み |
+
+Target Health確認結果:
+
+| Target | Port | State |
+| :--- | :--- | :--- |
+| Web01 | 3000 | healthy |
+| Web02 | 3000 | healthy |
+
+## 学んだこと
+
+- ALBはPublic Subnetに配置し、インターネットからの入口として利用できる
+- ALBのSecurity Groupで、外部からのHTTP/HTTPSアクセスを許可する
+- Listenerは、ALBが受け取った通信をどのTarget Groupへ転送するかを決める
+- Target Groupには複数のEC2インスタンスを登録できる
+- Target Healthが `healthy` になるには、Webサーバー側でヘルスチェック対象のパスに正常応答する必要がある
+- WebサーバーがPrivate Subnetにあっても、ALB経由でHTTPアクセスできる
+- Webサーバー側Security Groupでは、ALB用Security Groupからの3000/tcpを許可する必要がある
+- How-to本などではWebサーバー側にdefault Security Groupを利用する例もあるが、この構成では用途を明確にするため `sample-sg-web` を作成している
+
+## 注意事項
+
+ALBは課金対象である。学習が終わったら削除する。
+
+Webサーバー側で3000番ポートのアプリケーションが起動していない場合、Target Healthは `unhealthy` になる。
+
+今回のスクリプトでは、`sample-sg-elb` と `sample-sg-web` を分けている。
+`sample-sg-elb` はインターネットからALBへのHTTP/HTTPSを許可し、`sample-sg-web` はALBからWebサーバーへの3000番ポートを許可する。
+
+同じスクリプトを複数回実行すると、同じ名前のTarget GroupやALBを作成しようとしてエラーになる可能性がある。
+
+## 削除時の注意
+
+ALB関連リソースは依存関係があるため、以下の順序で削除する。
+
+1. Listenerを削除する
+2. ALBを削除する
+3. Target Groupを削除する
+4. 必要に応じてWeb EC2やSecurity Groupを削除する
+
+Listener ARNを取得する例:
+
+```bash
+LB_ARN=$(aws elbv2 describe-load-balancers \
+  --profile learning \
+  --region ap-northeast-1 \
+  --names sample-elb \
+  --query 'LoadBalancers[0].LoadBalancerArn' \
+  --output text)
+
+LISTENER_ARN=$(aws elbv2 describe-listeners \
+  --profile learning \
+  --region ap-northeast-1 \
+  --load-balancer-arn "$LB_ARN" \
+  --query 'Listeners[0].ListenerArn' \
+  --output text)
+```
+
+Listener削除:
+
+```bash
+aws elbv2 delete-listener \
+  --profile learning \
+  --region ap-northeast-1 \
+  --listener-arn "$LISTENER_ARN"
+```
+
+ALB削除:
+
+```bash
+aws elbv2 delete-load-balancer \
+  --profile learning \
+  --region ap-northeast-1 \
+  --load-balancer-arn "$LB_ARN"
+```
+
+Target Group削除:
+
+```bash
+TG_ARN=$(aws elbv2 describe-target-groups \
+  --profile learning \
+  --region ap-northeast-1 \
+  --names sample-tg \
+  --query 'TargetGroups[0].TargetGroupArn' \
+  --output text)
+
+aws elbv2 delete-target-group \
+  --profile learning \
+  --region ap-northeast-1 \
+  --target-group-arn "$TG_ARN"
+```
 
