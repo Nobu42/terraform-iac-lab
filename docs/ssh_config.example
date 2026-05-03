@@ -11,3 +11,9 @@ Host web01
   IdentitiesOnly yes
   ProxyJump bastion
 
+Host web02
+  HostName <Web02 Private IP>
+  User ec2-user
+  IdentityFile /path/to/nobu.pem
+  IdentitiesOnly yes
+  ProxyJump bastion
