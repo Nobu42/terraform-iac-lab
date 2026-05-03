@@ -1,4 +1,4 @@
-# 17 SES Receiving Setup
+# 18 SES Receiving Setup
 
 ## 目的
 
