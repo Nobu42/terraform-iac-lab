@@ -34,8 +34,8 @@ VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、E
 13. [パケットキャプチャ(名前解決)](./notes/13_public_dns_packect.md)
 14. [Private DNS構築](./notes/14_private_dns_setup.md)
 15. [SSL 認証](./notes/15_acm_certificate_setup.md)
-16. [SES 構築](./notes/16_ses_setup.sh)
-17. [メールテスト](./notes/17_17_sendmail_test.md)
+16. [SES 構築](./notes/16_ses_setup.md)
+17. [メールテスト](./notes/17_sendmail_test.md)
 
 ## 関連ドキュメント
 
