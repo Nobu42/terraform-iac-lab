@@ -31,6 +31,7 @@ VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、E
 10. [RDS 構築](./notes/10_Database_setup.md)
 11. [S3 構築](./notes/11_s3_setup.md)
 12. [Public DNS構築](./notes/12_public_dns_setup.md)
+13. [パケットキャプチャ(名前解決)](./notes/13_public_dns_packect.md)
 
 ## 関連ドキュメント
 
