@@ -36,7 +36,7 @@ Amazon SESのSMTPインターフェースを利用して、Pythonスクリプト
 
 ## スクリプト
 
-- [17_sendmailtest.py](../scripts/17_sendmailtest.py)
+- [17_sendmailtest.py](../scripts/17_sendmail_test.py)
 
 ## 認証情報の扱い
 
