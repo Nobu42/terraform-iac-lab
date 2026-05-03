@@ -1,4 +1,33 @@
 #!/bin/bash
+
+#
+# スクリプト実行後に以下で確認する。
+#
+# aws sts get-caller-identity --profile learning
+# aws configure list --profile learning
+#
+# 起動順
+# ./01_vpc_setup.sh
+# ./02_subnet_setup.sh
+# ./03_internetgateway_setup.sh
+# ./04_nat_gateway_setup.sh
+# ./05_route_table_setup.sh
+# ./06_security_group_setup.sh
+# ./07_bastion_server_setup.sh
+# ./08_Web_server_setup.sh
+# ./09_LoadBalancer_setup.sh
+# ./10_Database_setup.sh
+# ./11_s3_setup.sh
+# ./12_public_dns_setup.sh
+# ./14_private_dns_setup.sh
+# ./15_acm_certificate_setup.sh
+#
+# メール受信を使う日だけ
+# ./18_ses_receiving_setup.sh
+#
+# 送信テストする日だけ
+# python3 17_sendmail_test.py
+
 set -euo pipefail
 
 PROFILE="learning"
@@ -7,6 +36,12 @@ REGION="ap-northeast-1"
 VPC_NAME="sample-vpc"
 KEY_NAME="nobu"
 KEY_FILE="nobu.pem"
+
+# Domain / DNS
+DOMAIN_NAME="nobu-iac-lab.com"
+DOMAIN_NAME_DOT="${DOMAIN_NAME}."
+PUBLIC_DNS_RECORDS=("bastion.${DOMAIN_NAME}." "www.${DOMAIN_NAME}.")
+PRIVATE_HOSTED_ZONE_NAME="home."
 
 # ALB / Target Group
 ALB_NAME="sample-elb"
@@ -17,20 +52,36 @@ DB_INSTANCE_IDENTIFIER="sample-db"
 DB_SUBNET_GROUP_NAME="sample-db-subnet"
 DB_PARAMETER_GROUP_NAME="sample-db-pg"
 DB_OPTION_GROUP_NAME="sample-db-og"
-DB_SG_NAME="sample-sg-db"
 
-# S3 / IAM Role
+# S3 / IAM Role for Web
 BUCKET_NAME="nobu-terraform-iac-lab-upload"
 ROLE_NAME="sample-role-web"
 INSTANCE_PROFILE_NAME="sample-role-web"
 POLICY_ARN="arn:aws:iam::aws:policy/AmazonS3FullAccess"
 
+# SES receiving
+# 受信用のReceipt RuleとS3 mailboxは、学習終了時に削除する。
+# SES Domain Identity、DKIM/SPF/DMARC、SMTPユーザー、ACM証明書は残す。
+MAIL_BUCKET_NAME="nobu-iac-lab-mailbox"
+RECEIPT_RULE_SET_NAME="sample-ruleset"
+RECEIPT_RULE_NAME="sample-rule-inquiry"
+
+# LocalStack向けのaliasや環境変数が残っていると、実AWSではなくLocalStackへ接続してしまう。
 unalias aws 2>/dev/null || true
 unset AWS_ENDPOINT_URL
 unset LOCALSTACK_HOST
 
+echo "================================================"
+echo "Cleanup started."
+echo "This script deletes chargeable lab resources."
+echo "It keeps domain registration, public hosted zone,"
+echo "ACM certificate, and SES domain verification records."
+echo "================================================"
+
 echo "=== Caller Identity ==="
-aws sts get-caller-identity --profile "$PROFILE" --output table
+aws sts get-caller-identity \
+  --profile "$PROFILE" \
+  --output table
 
 echo "=== Get VPC ID ==="
 VPC_ID=$(aws ec2 describe-vpcs \
@@ -45,6 +96,124 @@ if [ "$VPC_ID" = "None" ] || [ -z "$VPC_ID" ]; then
   VPC_ID=""
 else
   echo "Target VPC: $VPC_ID"
+fi
+
+echo "=== Get Public Hosted Zone ID ==="
+PUBLIC_HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+  --profile "$PROFILE" \
+  --dns-name "$DOMAIN_NAME_DOT" \
+  --query "HostedZones[?Name==\`$DOMAIN_NAME_DOT\` && Config.PrivateZone==\`false\`].Id | [0]" \
+  --output text 2>/dev/null || true)
+
+if [ "$PUBLIC_HOSTED_ZONE_ID" != "None" ] && [ -n "$PUBLIC_HOSTED_ZONE_ID" ]; then
+  PUBLIC_HOSTED_ZONE_ID="${PUBLIC_HOSTED_ZONE_ID#/hostedzone/}"
+  echo "Public Hosted Zone ID: $PUBLIC_HOSTED_ZONE_ID"
+else
+  PUBLIC_HOSTED_ZONE_ID=""
+  echo "Public Hosted Zone not found."
+fi
+
+echo "=== Delete Public DNS Records for Daily Lab Resources ==="
+if [ -n "$PUBLIC_HOSTED_ZONE_ID" ]; then
+  for record_name in "${PUBLIC_DNS_RECORDS[@]}"; do
+    RECORD_JSON=$(aws route53 list-resource-record-sets \
+      --profile "$PROFILE" \
+      --hosted-zone-id "$PUBLIC_HOSTED_ZONE_ID" \
+      --query "ResourceRecordSets[?Name==\`${record_name}\`] | [0]" \
+      --output json)
+
+    if [ "$RECORD_JSON" != "null" ] && [ -n "$RECORD_JSON" ]; then
+      echo "Deleting public DNS record: $record_name"
+
+      CHANGE_BATCH=$(cat <<EOF
+{
+  "Comment": "Delete daily lab public DNS record",
+  "Changes": [
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": ${RECORD_JSON}
+    }
+  ]
+}
+EOF
+)
+
+      aws route53 change-resource-record-sets \
+        --profile "$PROFILE" \
+        --hosted-zone-id "$PUBLIC_HOSTED_ZONE_ID" \
+        --change-batch "$CHANGE_BATCH" >/dev/null
+    else
+      echo "Public DNS record not found: $record_name"
+    fi
+  done
+
+  echo "Note: Public Hosted Zone itself is kept."
+  echo "Note: ACM validation CNAME, DKIM, SPF, and DMARC records are kept."
+fi
+
+echo "=== Delete SES Receiving Rule / Rule Set ==="
+# 受信設定はS3保存とMX配送に関わるため、日次削除対象にする。
+# SES送信用のDomain IdentityやDKIM/SPF/DMARCは残す。
+RULE_SET_EXISTS="true"
+aws ses describe-receipt-rule-set \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --rule-set-name "$RECEIPT_RULE_SET_NAME" >/dev/null 2>&1 || RULE_SET_EXISTS="false"
+
+if [ "$RULE_SET_EXISTS" = "true" ]; then
+  echo "Deleting receipt rule: $RECEIPT_RULE_NAME"
+
+  aws ses delete-receipt-rule \
+    --profile "$PROFILE" \
+    --region "$REGION" \
+    --rule-set-name "$RECEIPT_RULE_SET_NAME" \
+    --rule-name "$RECEIPT_RULE_NAME" 2>/dev/null || echo "Receipt rule already deleted or not found."
+
+  echo "Deleting receipt rule set: $RECEIPT_RULE_SET_NAME"
+
+  aws ses delete-receipt-rule-set \
+    --profile "$PROFILE" \
+    --region "$REGION" \
+    --rule-set-name "$RECEIPT_RULE_SET_NAME" 2>/dev/null || echo "Receipt rule set could not be deleted."
+
+  echo "Active receipt rule set may become empty."
+else
+  echo "Receipt Rule Set not found."
+fi
+
+echo "=== Delete MX Record for SES Receiving ==="
+# MXレコードを残すと、nobu-iac-lab.com宛メールがSES受信へ配送され続ける。
+# 日次学習後は削除して、受信設定とS3保存を止める。
+if [ -n "$PUBLIC_HOSTED_ZONE_ID" ]; then
+  MX_RECORD_JSON=$(aws route53 list-resource-record-sets \
+    --profile "$PROFILE" \
+    --hosted-zone-id "$PUBLIC_HOSTED_ZONE_ID" \
+    --query "ResourceRecordSets[?Name==\`${DOMAIN_NAME}.\` && Type==\`MX\`] | [0]" \
+    --output json)
+
+  if [ "$MX_RECORD_JSON" != "null" ] && [ -n "$MX_RECORD_JSON" ]; then
+    echo "Deleting MX record for SES receiving."
+
+    CHANGE_BATCH=$(cat <<EOF
+{
+  "Comment": "Delete MX record for SES receiving",
+  "Changes": [
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": ${MX_RECORD_JSON}
+    }
+  ]
+}
+EOF
+)
+
+    aws route53 change-resource-record-sets \
+      --profile "$PROFILE" \
+      --hosted-zone-id "$PUBLIC_HOSTED_ZONE_ID" \
+      --change-batch "$CHANGE_BATCH" >/dev/null
+  else
+    echo "MX record not found."
+  fi
 fi
 
 echo "=== Delete ALB Listener / Load Balancer / Target Group ==="
@@ -224,6 +393,56 @@ aws rds delete-option-group \
   --region "$REGION" \
   --option-group-name "$DB_OPTION_GROUP_NAME" 2>/dev/null || echo "DB Option Group already deleted or not found."
 
+echo "=== Delete Private Hosted Zone ==="
+# Private Hosted ZoneはVPCと一緒に日次削除する。
+# 先に独自レコードを削除し、その後Hosted Zoneを削除する。
+PRIVATE_HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+  --profile "$PROFILE" \
+  --dns-name "$PRIVATE_HOSTED_ZONE_NAME" \
+  --query "HostedZones[?Name==\`$PRIVATE_HOSTED_ZONE_NAME\` && Config.PrivateZone==\`true\`].Id | [0]" \
+  --output text 2>/dev/null || true)
+
+if [ "$PRIVATE_HOSTED_ZONE_ID" != "None" ] && [ -n "$PRIVATE_HOSTED_ZONE_ID" ]; then
+  PRIVATE_HOSTED_ZONE_ID="${PRIVATE_HOSTED_ZONE_ID#/hostedzone/}"
+  echo "Private Hosted Zone ID: $PRIVATE_HOSTED_ZONE_ID"
+
+  PRIVATE_RECORDS=$(aws route53 list-resource-record-sets \
+    --profile "$PROFILE" \
+    --hosted-zone-id "$PRIVATE_HOSTED_ZONE_ID" \
+    --query 'ResourceRecordSets[?Type!=`NS` && Type!=`SOA`]' \
+    --output json)
+
+  if [ "$PRIVATE_RECORDS" != "[]" ]; then
+    echo "Deleting private DNS records."
+
+    PRIVATE_CHANGES=$(echo "$PRIVATE_RECORDS" | jq -c '.[]' | sed 's/^/{ "Action": "DELETE", "ResourceRecordSet": /; s/$/ },/' | sed '$ s/,$//')
+
+    CHANGE_BATCH=$(cat <<EOF
+{
+  "Comment": "Delete private DNS records",
+  "Changes": [
+${PRIVATE_CHANGES}
+  ]
+}
+EOF
+)
+
+    aws route53 change-resource-record-sets \
+      --profile "$PROFILE" \
+      --hosted-zone-id "$PRIVATE_HOSTED_ZONE_ID" \
+      --change-batch "$CHANGE_BATCH" >/dev/null
+  else
+    echo "No private DNS records found."
+  fi
+
+  echo "Deleting private hosted zone: $PRIVATE_HOSTED_ZONE_ID"
+  aws route53 delete-hosted-zone \
+    --profile "$PROFILE" \
+    --id "$PRIVATE_HOSTED_ZONE_ID" >/dev/null
+else
+  echo "Private Hosted Zone not found."
+fi
+
 echo "=== Delete custom Route Tables ==="
 if [ -n "$VPC_ID" ]; then
   RT_IDS=$(aws ec2 describe-route-tables \
@@ -363,7 +582,7 @@ else
   echo "Skip VPC delete because VPC was not found."
 fi
 
-echo "=== Delete S3 Objects and Bucket ==="
+echo "=== Delete S3 Objects and Bucket for Web Upload ==="
 if aws s3api head-bucket \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -381,10 +600,31 @@ if aws s3api head-bucket \
     --region "$REGION" \
     --bucket "$BUCKET_NAME"
 else
-  echo "S3 bucket not found or not accessible."
+  echo "Web upload S3 bucket not found or not accessible."
 fi
 
-echo "=== Delete IAM Role and Instance Profile ==="
+echo "=== Delete S3 Objects and Bucket for SES Receiving ==="
+if aws s3api head-bucket \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --bucket "$MAIL_BUCKET_NAME" >/dev/null 2>&1; then
+
+  echo "Deleting received mails in S3 bucket: $MAIL_BUCKET_NAME"
+  aws s3 rm "s3://$MAIL_BUCKET_NAME" \
+    --profile "$PROFILE" \
+    --region "$REGION" \
+    --recursive
+
+  echo "Deleting S3 bucket: $MAIL_BUCKET_NAME"
+  aws s3api delete-bucket \
+    --profile "$PROFILE" \
+    --region "$REGION" \
+    --bucket "$MAIL_BUCKET_NAME"
+else
+  echo "SES receiving S3 bucket not found or not accessible."
+fi
+
+echo "=== Delete IAM Role and Instance Profile for Web EC2 ==="
 aws iam detach-role-policy \
   --profile "$PROFILE" \
   --role-name "$ROLE_NAME" \
@@ -403,5 +643,21 @@ aws iam delete-role \
   --profile "$PROFILE" \
   --role-name "$ROLE_NAME" 2>/dev/null || echo "IAM Role already deleted or not found."
 
-echo "=== Cleanup completed ==="
+echo "================================================"
+echo "Cleanup completed."
+echo "Kept resources:"
+echo "  - Domain registration: ${DOMAIN_NAME}"
+echo "  - Public Hosted Zone: ${DOMAIN_NAME}"
+echo "  - ACM certificate and validation CNAME"
+echo "  - SES Domain Identity / DKIM / SPF / DMARC"
+echo "  - SES SMTP IAM user"
+echo ""
+echo "Next startup notes:"
+echo "  - Run setup scripts again from 01 to the needed step."
+echo "  - Re-run 12_public_dns_setup.sh after ALB/Bastion creation."
+echo "  - Re-run 14_private_dns_setup.sh after EC2/RDS creation."
+echo "  - Re-run 15_acm_certificate_setup.sh to attach existing ACM certificate to new ALB."
+echo "  - Re-run 17_ses_receiving_setup.sh if you want to receive inquiry mail again."
+echo "  - Check costs with check_cost.sh and check cleanup with check_cleanup.sh."
+echo "================================================"
 
