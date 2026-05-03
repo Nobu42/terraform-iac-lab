@@ -1,0 +1,19 @@
+Host bastion
+  HostName 43.206.215.171
+  User ec2-user
+  IdentityFile /Users/nobu/terraform-iac-lab/01-aws-cli/scripts/nobu.pem
+  IdentitiesOnly yes
+
+Host web01
+  HostName 10.0.66.158
+  User ec2-user
+  IdentityFile /Users/nobu/terraform-iac-lab/01-aws-cli/scripts/nobu.pem
+  IdentitiesOnly yes
+  ProxyJump bastion
+
+Host web02
+  HostName 10.0.92.212
+  User ec2-user
+  IdentityFile /Users/nobu/terraform-iac-lab/01-aws-cli/scripts/nobu.pem
+  IdentitiesOnly yes
+  ProxyJump bastion
