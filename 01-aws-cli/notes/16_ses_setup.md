@@ -207,6 +207,17 @@ DNS反映後、SESがレコードを確認できると `SUCCESS` になる。
 `Email Address Identity` の `VerifiedForSendingStatus: False` は、確認メールのリンクをまだクリックしていない状態を示す。
 `nobu4071@icloud.com` に届いたAWSからの確認メールを開き、リンクをクリックすると検証が完了する。
 
+### GUIで以下のSMTPユーザーを作成
+```
+ユーザー名: ses-smtp-no-reply
+ユーザーグループ名: AWSSESSendingGroupDoNotRename
+
+Tags:
+Name = ses-smtp-no-reply
+Project = terraform-iac-lab
+Environment = learning
+```
+
 ## 学んだこと
 
 - SESでは送信元として利用するドメインをDomain Identityとして認証する
