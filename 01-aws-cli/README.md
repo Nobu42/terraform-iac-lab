@@ -37,6 +37,7 @@ VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、E
 16. [SES 構築](./notes/16_ses_setup.md)
 17. [メールテスト](./notes/17_sendmail_test.md)
 18. [受信設定](./notes/18_ses_receiving_setup.md)
+19. [キャッシュサーバ構築](./notes/19_elasticache_setup.md)
 
 ## 関連ドキュメント
 
