@@ -32,7 +32,7 @@ WebサーバーはPublic IPを持たせず、Private Subnetに配置する。外
 | 配置先Subnet | sample-subnet-private01 | sample-subnet-private02 |
 | Public IP | なし | なし |
 | AMI | Amazon Linux 2023 latest AMI | Amazon Linux 2023 latest AMI |
-| インスタンスタイプ | t3.micro | t3.micro |
+| インスタンスタイプ | t3.small | t3.small |
 | Key Pair | nobu | nobu |
 | SSHユーザー | ec2-user | ec2-user |
 
@@ -121,8 +121,8 @@ Private SubnetにWebサーバーを2台作成した。
 
 | Name | State | Type | Public IP | Private IP |
 | :--- | :--- | :--- | :--- | :--- |
-| sample-ec2-web01 | running | t3.micro | なし | 割り当て済み |
-| sample-ec2-web02 | running | t3.micro | なし | 割り当て済み |
+| sample-ec2-web01 | running | t3.small | なし | 割り当て済み |
+| sample-ec2-web02 | running | t3.small | なし | 割り当て済み |
 
 Webサーバー用Security Groupでは、踏み台サーバーからのSSHと、ALBからのアプリケーション通信のみを許可した。
 
