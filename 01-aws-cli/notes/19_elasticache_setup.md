@@ -197,17 +197,85 @@ Redisクラスターへ接続する。
 redis-cli -c -h sample-elasticache.0wkp6l.clustercfg.apne1.cache.amazonaws.com -p 6379
 ```
 
-接続後、疎通確認を行う。
+## Redis接続確認
 
-```redis
-PING
+ElastiCacheはPrivate Subnetに配置しているため、接続確認はWebサーバーから実施する。
+
+Amazon Linux 2023では、書籍で利用されている `amazon-linux-extras` は使用しない。Redisクライアントは `dnf` で `redis6` パッケージをインストールする。
+
+```bash
+sudo dnf search redis
+sudo dnf -y install redis6
 ```
 
-応答例:
+インストールされたコマンドを確認する。
+
+```bash
+rpm -ql redis6 | grep bin
+```
+
+実行結果例:
+
+```text
+/usr/bin/redis6-benchmark
+/usr/bin/redis6-check-aof
+/usr/bin/redis6-check-rdb
+/usr/bin/redis6-cli
+/usr/bin/redis6-sentinel
+/usr/bin/redis6-server
+```
+
+`redis-cli` ではなく `redis6-cli` としてインストールされる。
+
+```bash
+redis6-cli --version
+```
+
+実行結果例:
+
+```text
+redis-cli 6.2.20
+```
+
+ElastiCacheのConfiguration Endpointへ接続する。
+
+```bash
+redis6-cli -c \
+  -h sample-elasticache.0wkp6l.clustercfg.apne1.cache.amazonaws.com \
+  -p 6379 \
+  ping
+```
+
+実行結果:
 
 ```text
 PONG
 ```
+
+Redis Cluster構成のため、`redis6-cli` には `-c` オプションを付ける。`-c` を付けることで、キーが別シャードに割り当てられた場合のリダイレクトに対応できる。
+
+読み書き確認を行う。
+
+```bash
+redis6-cli -c \
+  -h sample-elasticache.0wkp6l.clustercfg.apne1.cache.amazonaws.com \
+  -p 6379 \
+  set test-key "hello redis"
+
+redis6-cli -c \
+  -h sample-elasticache.0wkp6l.clustercfg.apne1.cache.amazonaws.com \
+  -p 6379 \
+  get test-key
+```
+
+実行結果:
+
+```text
+OK
+"hello redis"
+```
+
+これにより、WebサーバーからElastiCache Redisへ接続し、データの読み書きができることを確認した。
 
 クラスターモード有効のRedisでは、`redis-cli` に `-c` を付ける。
 `-c` を付けることで、クラスターノード間のリダイレクトに追従できる。
