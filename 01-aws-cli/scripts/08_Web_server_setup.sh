@@ -22,7 +22,7 @@ KEY_NAME="nobu"
 KEY_FILE="${KEY_NAME}.pem"
 
 # WebサーバーのインスタンスタイプとNameタグ。
-INSTANCE_TYPE="t3.micro"
+INSTANCE_TYPE="t3.small"
 WEB01_NAME="sample-ec2-web01"
 WEB02_NAME="sample-ec2-web02"
 

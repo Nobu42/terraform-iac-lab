@@ -93,7 +93,9 @@
 | 項目 | 値 |
 | :--- | :--- |
 | AMI | Amazon Linux 2023 latest AMI |
-| インスタンスタイプ | t3.micro |
+| sample-ec2-bastion | t3.micro |
+| sample-ec2-web01 | t3.small |
+| sample-ec2-web02 | t3.small |
 | Key Pair | nobu |
 | OSユーザー | ec2-user |
 
