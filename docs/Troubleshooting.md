@@ -1,0 +1,890 @@
+# Troubleshooting
+
+このドキュメントは、AWS CLI、Shell Script、AnsibleでAWS学習環境を構築する中で発生したエラーと対応内容をまとめたものです。
+
+単にエラーを記録するだけでなく、原因、対応、再発防止策を整理することで、今後のTerraform化や運用改善につなげることを目的とします。
+
+## 1. AWS CLIがLocalStackへ接続してしまう
+
+### 事象
+
+実AWSへ接続したいが、AWS CLIがLocalStackのEndpointへ接続してしまった。
+
+```text
+aws: [ERROR]: Could not connect to the endpoint URL: "http://192.168.40.100:4566/"
+```
+
+### 原因
+
+過去にLocalStack検証用として設定したaliasや環境変数が残っていた。
+
+例:
+
+```bash
+AWS_ENDPOINT_URL
+LOCALSTACK_HOST
+alias aws='aws --endpoint-url=...'
+```
+
+### 対応
+
+設定ファイルを確認した。
+
+```bash
+grep -n "alias aws" ~/.bashrc ~/.bash_profile ~/.profile ~/.zshrc 2>/dev/null
+echo "$AWS_ENDPOINT_URL"
+echo "$LOCALSTACK_HOST"
+type -a aws
+```
+
+実AWS用の各スクリプトでは、冒頭でLocalStack向け設定を解除するようにした。
+
+```bash
+unalias aws 2>/dev/null || true
+unset AWS_ENDPOINT_URL
+unset LOCALSTACK_HOST
+```
+
+### 学んだこと
+
+AWS CLIの接続先は、aliasや環境変数の影響を受ける。
+実AWS向けスクリプトでは、LocalStack向け設定を明示的に解除してから実行する。
+
+---
+
+## 2. `<sample-tgのARN>` をそのまま実行してしまう
+
+### 事象
+
+Target Group ARNを指定する箇所で、プレースホルダーをそのまま実行した。
+
+```bash
+--target-group-arn <sample-tgのARN>
+```
+
+エラー:
+
+```text
+-bash: sample-tgのARN: No such file or directory
+```
+
+### 原因
+
+`<...>` は説明用のプレースホルダーであり、bashではリダイレクトとして解釈される。
+
+### 対応
+
+AWS CLIでTarget Group ARNを取得して変数に格納した。
+
+```bash
+TG_ARN=$(aws elbv2 describe-target-groups \
+  --profile learning \
+  --region ap-northeast-1 \
+  --names sample-tg \
+  --query 'TargetGroups[0].TargetGroupArn' \
+  --output text)
+```
+
+その後、変数を使って実行した。
+
+```bash
+aws elbv2 describe-target-health \
+  --profile learning \
+  --region ap-northeast-1 \
+  --target-group-arn "$TG_ARN"
+```
+
+### 学んだこと
+
+手順書上の `<...>` は実際の値に置き換える必要がある。
+ARNなどの動的な値は、AWS CLIで取得して変数化すると安全である。
+
+---
+
+## 3. Amazon Linux 2023で `mysql` パッケージが見つからない
+
+### 事象
+
+WebサーバーからRDSへ接続確認するため、MySQLクライアントをインストールしようとした。
+
+```bash
+sudo yum -y install mysql
+sudo dnf -y install mysql
+```
+
+エラー:
+
+```text
+No match for argument: mysql
+Error: Unable to find a match: mysql
+```
+
+### 原因
+
+Amazon Linux 2023では、書籍に記載されている `mysql` パッケージ名では提供されていなかった。
+
+### 対応
+
+MariaDB系パッケージを検索した。
+
+```bash
+sudo dnf search mariadb
+```
+
+`mariadb105` をインストールした。
+
+```bash
+sudo dnf -y install mariadb105
+```
+
+確認:
+
+```bash
+mysql --version
+```
+
+結果:
+
+```text
+mysql  Ver 15.1 Distrib 10.5.29-MariaDB
+```
+
+RDSへの接続確認:
+
+```bash
+mysqladmin ping -u adminuser -p -h sample-db.cz0uoiium9n7.ap-northeast-1.rds.amazonaws.com
+```
+
+結果:
+
+```text
+mysqld is alive
+```
+
+### 学んだこと
+
+Amazon Linux 2023では、書籍のAmazon Linux 2向けパッケージ名がそのまま使えない場合がある。
+パッケージが見つからない場合は、`dnf search` で現在のリポジトリに存在する名前を確認する。
+
+---
+
+## 4. RDS Endpointのドメイン名を誤った
+
+### 事象
+
+RDSへ接続しようとしたが、ホスト名が解決できなかった。
+
+```text
+Unknown MySQL server host 'sampledb.cginsnmcx6vh.ap.northeast-1.rds.amazonaws.com'
+```
+
+### 原因
+
+RDS Endpointの文字列が誤っていた。
+`ap.northeast-1` のようにドット位置が間違っていた。
+
+### 対応
+
+AWS CLIまたはRDS作成時の出力から正しいEndpointを確認した。
+
+正しい例:
+
+```text
+sample-db.cz0uoiium9n7.ap-northeast-1.rds.amazonaws.com
+```
+
+接続確認:
+
+```bash
+mysqladmin ping -u adminuser -p -h sample-db.cz0uoiium9n7.ap-northeast-1.rds.amazonaws.com
+```
+
+結果:
+
+```text
+mysqld is alive
+```
+
+### 学んだこと
+
+RDS Endpointは手入力せず、AWS CLIの出力からコピーする。
+Private DNS `db.home` を作ることで、今後はEndpoint変更の影響を受けにくくできる。
+
+---
+
+## 5. S3バケット名が既に使われていた
+
+### 事象
+
+S3バケットを作成しようとしたが、既に使用済みだった。
+
+```text
+BucketAlreadyExists
+The requested bucket name is not available.
+The bucket namespace is shared by all users of the system.
+```
+
+### 原因
+
+S3バケット名はAWS全体でグローバルに一意である必要がある。
+他のAWSアカウントで同じ名前が使われていた。
+
+### 対応
+
+より一意性の高いバケット名に変更した。
+
+```text
+nobu-terraform-iac-lab-upload
+```
+
+### 学んだこと
+
+S3バケット名はアカウント内ではなく、AWS全体で一意である。
+学習用でも、ユーザー名やプロジェクト名を含めた一意な名前にする。
+
+---
+
+## 6. AWS CLIのJMESPathで `split()` が使えない
+
+### 事象
+
+IAM Instance Profile Associationの確認で、`split()` を使ったqueryが失敗した。
+
+```text
+aws: [ERROR]: Unknown function: split()
+```
+
+### 原因
+
+AWS CLIのJMESPathでは、環境やバージョンによって利用できない関数がある。
+`split()` は利用できなかった。
+
+### 対応
+
+`split()` を使わず、ARN全体またはNameを直接出すqueryへ変更した。
+
+### 学んだこと
+
+AWS CLIの `--query` は便利だが、使える関数に制限がある。
+複雑な加工をCLI queryだけで行わず、必要なら表示内容をシンプルにする。
+
+---
+
+## 7. Public DNSとPrivate DNSの確認場所を誤った
+
+### 事象
+
+Private Hosted Zone `home` に作成した `web01.home` や `db.home` をMacから引いたところ、NXDOMAINになった。
+
+```bash
+dig web01.home
+dig db.home
+```
+
+結果:
+
+```text
+status: NXDOMAIN
+```
+
+### 原因
+
+Route 53 Private Hosted Zoneは、関連付けたVPC内からのみ名前解決できる。
+Macの自宅DNSからは解決できない。
+
+### 対応
+
+VPC内のEC2から確認した。
+
+```bash
+dig web01.home
+dig db.home
+```
+
+結果:
+
+```text
+web01.home. 300 IN A 10.0.66.158
+db.home. 300 IN CNAME sample-db.cz0uoiium9n7.ap-northeast-1.rds.amazonaws.com.
+```
+
+`db.home` を使ったRDS接続確認も成功した。
+
+```bash
+mysqladmin ping -u adminuser -p -h db.home
+```
+
+結果:
+
+```text
+mysqld is alive
+```
+
+### 学んだこと
+
+Public DNSはインターネット側から確認できる。
+Private DNSはVPC内のEC2から確認する必要がある。
+
+---
+
+## 8. DNS名前解決をtcpdumpで確認した
+
+### 事象
+
+Public DNSの名前解決が実際に行われていることを確認したかった。
+
+### 対応
+
+MacでDNS通信をキャプチャした。
+
+```bash
+sudo tcpdump -i en0 -n port 53
+```
+
+確認例:
+
+```text
+192.168.40.101.63679 > 192.168.40.208.53: A? www.nobu-iac-lab.com.
+192.168.40.208.53 > 192.168.40.101.63679: A 3.115.185.66, A 13.192.190.8
+```
+
+### 学んだこと
+
+`dig` の結果だけでなく、`tcpdump` を使うことでDNS問い合わせと応答のパケットを確認できる。
+`192.168.40.208` は自宅のDNSサーバーである。
+
+---
+
+## 9. ALB Target Healthがunhealthyになった
+
+### 事象
+
+ALBのTarget Groupで一部のWebサーバーがunhealthyになった。
+
+```text
+Target.FailedHealthChecks
+Health checks failed
+```
+
+### 原因
+
+Webサーバー側で、ALBのヘルスチェック対象ポート `3000` のアプリケーションが起動していなかった。
+または、`python3 -m http.server 3000` を起動したディレクトリの `index.html` が想定と異なっていた。
+
+### 対応
+
+Webサーバー上で3000番ポートのHTTPサーバーを起動した。
+
+```bash
+python3 -m http.server 3000
+```
+
+Target Healthを確認した。
+
+```bash
+aws elbv2 describe-target-health \
+  --profile learning \
+  --region ap-northeast-1 \
+  --target-group-arn "$TG_ARN" \
+  --output table
+```
+
+### 学んだこと
+
+ALBのSecurity Group設定だけでなく、Target側でアプリケーションが起動している必要がある。
+ヘルスチェックパス `/` に正常応答できないとTargetはhealthyにならない。
+
+---
+
+## 10. Amazon Linux 2023に `amazon-linux-extras` がない
+
+### 事象
+
+書籍の手順ではnginxやRedis導入に `amazon-linux-extras` を使っていた。
+
+```bash
+sudo amazon-linux-extras install -y nginx
+```
+
+しかしAmazon Linux 2023では利用できなかった。
+
+### 原因
+
+`amazon-linux-extras` はAmazon Linux 2で使われていた仕組みであり、Amazon Linux 2023では基本的に使用しない。
+
+### 対応
+
+Amazon Linux 2023では `dnf` を使う。
+
+nginx:
+
+```bash
+sudo dnf -y install nginx
+```
+
+Redis:
+
+```bash
+sudo dnf -y install redis6
+```
+
+### 学んだこと
+
+書籍がAmazon Linux 2前提の場合、Amazon Linux 2023ではパッケージ導入手順を読み替える必要がある。
+
+---
+
+## 11. Redisクライアント名が `redis-cli` ではなく `redis6-cli` だった
+
+### 事象
+
+ElastiCache接続確認のためRedisクライアントをインストールしたが、`redis-cli` が見つからなかった。
+
+```bash
+redis-cli --version
+```
+
+結果:
+
+```text
+-bash: redis-cli: command not found
+```
+
+### 原因
+
+Amazon Linux 2023の `redis6` パッケージでは、コマンド名が `redis6-cli` だった。
+
+### 対応
+
+パッケージに含まれるコマンドを確認した。
+
+```bash
+rpm -ql redis6 | grep bin
+```
+
+結果:
+
+```text
+/usr/bin/redis6-cli
+/usr/bin/redis6-server
+```
+
+確認:
+
+```bash
+redis6-cli --version
+```
+
+ElastiCache接続確認:
+
+```bash
+redis6-cli -c \
+  -h sample-elasticache.0wkp6l.clustercfg.apne1.cache.amazonaws.com \
+  -p 6379 \
+  ping
+```
+
+結果:
+
+```text
+PONG
+```
+
+読み書き確認:
+
+```bash
+redis6-cli -c \
+  -h sample-elasticache.0wkp6l.clustercfg.apne1.cache.amazonaws.com \
+  -p 6379 \
+  set test-key "hello redis"
+
+redis6-cli -c \
+  -h sample-elasticache.0wkp6l.clustercfg.apne1.cache.amazonaws.com \
+  -p 6379 \
+  get test-key
+```
+
+結果:
+
+```text
+OK
+"hello redis"
+```
+
+### 学んだこと
+
+Redis Cluster構成では `redis6-cli` に `-c` を付ける。
+`-c` を付けることで、キーが別シャードにある場合のリダイレクトに対応できる。
+
+---
+
+## 12. ElastiCacheを削除し忘れてSubnet / Security Group削除に失敗した
+
+### 事象
+
+`cleanup_all.sh` 実行時、Security GroupやSubnet削除でエラーになった。
+
+```text
+DependencyViolation
+resource sg-xxxxxxxx has a dependent object
+The subnet 'subnet-xxxxxxxx' has dependencies and cannot be deleted.
+```
+
+### 原因
+
+ElastiCache Replication GroupがPrivate SubnetとSecurity Groupを使用していた。
+ElastiCacheを先に削除しないと、SubnetやSecurity Groupを削除できなかった。
+
+### 対応
+
+ElastiCache削除処理を `cleanup_all.sh` に追加した。
+
+```bash
+aws elasticache delete-replication-group \
+  --profile learning \
+  --region ap-northeast-1 \
+  --replication-group-id sample-elasticache \
+  --no-retain-primary-cluster
+
+aws elasticache wait replication-group-deleted \
+  --profile learning \
+  --region ap-northeast-1 \
+  --replication-group-id sample-elasticache
+
+aws elasticache delete-cache-subnet-group \
+  --profile learning \
+  --region ap-northeast-1 \
+  --cache-subnet-group-name sample-elasticache-sg
+```
+
+Security Group削除対象にも `sample-sg-elasticache` を追加した。
+
+### 学んだこと
+
+AWSリソース削除時は依存関係の順序が重要である。
+ElastiCacheはSubnet GroupとSecurity Groupを使用するため、Subnet / Security Groupより先に削除する。
+
+---
+
+## 13. `sample-vpc` が残った状態で `All_Setup.sh` を実行してCIDR衝突した
+
+### 事象
+
+`All_Setup.sh` 実行時、VPC作成後にSubnet作成で失敗した。
+
+```text
+InvalidSubnet.Conflict
+The CIDR '10.0.0.0/20' conflicts with another subnet
+```
+
+### 原因
+
+前回の `sample-vpc` が残っている状態で、新しい `sample-vpc` を作成してしまった。
+その結果、`sample-vpc` が複数存在し、後続スクリプトが古いVPCを参照してSubnet CIDRが衝突した。
+
+### 対応
+
+`cleanup_all.sh` を実行して既存VPCを削除した。
+さらに、`All_Setup.sh` の冒頭に既存VPCチェックを追加した。
+
+```bash
+EXISTING_VPCS=$(aws ec2 describe-vpcs \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --filters Name=tag:Name,Values="$VPC_NAME" \
+  --query 'Vpcs[*].VpcId' \
+  --output text)
+
+if [ -n "$EXISTING_VPCS" ]; then
+  echo "Error: Existing VPC found."
+  echo "VPC IDs : $EXISTING_VPCS"
+  exit 1
+fi
+```
+
+### 学んだこと
+
+日次で削除・再構築する運用では、構築前の残存確認が重要である。
+`All_Setup.sh` はクリーンな状態からのみ実行するようにガードを入れる。
+
+---
+
+## 14. SES Production Accessが承認されなかった
+
+### 事象
+
+SESのSandbox外利用を申請したが、承認されなかった。
+
+```text
+現時点では制限の引き上げを承認することができません。
+```
+
+### 原因
+
+AWS Trust and Safetyの審査基準により、Production Accessが承認されなかった。
+詳細な審査基準は公開されていない。
+
+### 対応
+
+Sandbox環境で検証を継続する方針にした。
+
+Sandbox環境でも以下は確認済み:
+
+- Domain Identity
+- DKIM
+- SPF
+- DMARC
+- SMTP送信
+- SES受信
+- S3への受信メール保存
+
+ポートフォリオ上は以下のように整理する。
+
+```text
+Amazon SESはSandbox環境で検証。
+Domain Identity、DKIM、SPF、DMARC、SMTP認証、S3へのメール受信保存を確認済み。
+Production AccessはAWS審査の都合により未承認のため、送信先は検証済みメールアドレスに限定。
+```
+
+### 学んだこと
+
+SESはメール品質や不正利用対策が厳しいサービスであり、個人学習用途ではProduction Accessが承認されない場合がある。
+Sandbox環境でも、送信・受信・DNS認証の基本構成は十分に検証できる。
+
+---
+
+## 15. CloudWatch CLIの `--statistics` 指定を誤った
+
+### 事象
+
+EC2 CPU使用率を確認するためCloudWatch CLIを実行したが、`--statistics` 指定でエラーになった。
+
+```text
+The parameter Statistics.member.1.<list element> must be a value in the set
+[SampleCount, Average, Sum, Minimum, Maximum].
+```
+
+### 原因
+
+`--statistics` に `Average,Maximum` のようなカンマ区切りを指定していた。
+
+### 対応
+
+スペース区切りで指定した。
+
+```bash
+aws cloudwatch get-metric-statistics \
+  --profile learning \
+  --region ap-northeast-1 \
+  --namespace AWS/EC2 \
+  --metric-name CPUUtilization \
+  --dimensions Name=InstanceId,Value=<InstanceId> \
+  --start-time "$(date -u -v-30M +%Y-%m-%dT%H:%M:%SZ)" \
+  --end-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --period 300 \
+  --statistics Average Maximum \
+  --query 'Datapoints[*].{Time:Timestamp,Average:Average,Maximum:Maximum}' \
+  --output table
+```
+
+### 学んだこと
+
+AWS CLIの複数値オプションは、カンマ区切りではなくスペース区切りで指定するものがある。
+
+---
+
+## 16. t3.microでRubyビルドが重く、SSHが不安定になった
+
+### 事象
+
+AnsibleでRuby 3.3.6をrbenv経由でインストール中、web01へのSSHが不安定になった。
+
+```text
+Connection timed out during banner exchange
+Connection to UNKNOWN port 65535 timed out
+```
+
+Ansibleでも到達不能になった。
+
+```text
+UNREACHABLE
+Failed to connect to the host via ssh
+```
+
+### 原因
+
+`t3.micro` 上でRubyをソースビルドしたため、CPUやメモリに余裕がなくなった。
+CloudWatchでCPU使用率を確認すると、Rubyビルド中に高いCPU使用率が出ていた。
+
+```text
+Maximum 99.88
+Average 53%
+```
+
+### 対応
+
+Ansible側で以下の対策を行った。
+
+`ansible.cfg` を作成:
+
+```ini
+[defaults]
+inventory = inventory/hosts.ini
+host_key_checking = False
+timeout = 60
+
+[ssh_connection]
+ssh_args = -o ControlMaster=auto -o ControlPersist=600s -o ServerAliveInterval=30 -o ServerAliveCountMax=10
+pipelining = True
+```
+
+`05_ruby.yml` に `serial: 1` を追加し、web01 / web02を同時にビルドしないようにした。
+
+```yaml
+- name: Install Ruby with rbenv
+  hosts: web
+  become: true
+  serial: 1
+```
+
+また、今後のRailsデプロイ作業を考慮し、Webサーバーのインスタンスタイプを `t3.micro` から `t3.small` に変更する方針にした。
+
+### 学んだこと
+
+小さいEC2インスタンスでソースビルドを行うと、SSHやAnsibleの接続が不安定になる場合がある。
+構成管理では、処理内容に応じたインスタンスサイズや実行順序を考慮する必要がある。
+
+---
+
+## 17. AnsibleはMacから実行する
+
+### 事象
+
+Webサーバー上で `ansible` コマンドを実行し、コマンドが見つからなかった。
+
+```text
+-bash: ansible: command not found
+```
+
+### 原因
+
+Ansibleは管理対象サーバーではなく、操作元のMacにインストールして実行する構成だった。
+web01 / web02にAnsible本体を入れる必要はない。
+
+### 対応
+
+MacにAnsibleをインストールした。
+
+```bash
+brew install ansible
+```
+
+MacからBastion経由でweb01 / web02へ接続した。
+
+```bash
+ansible -i inventory/hosts.ini web -m ping
+```
+
+結果:
+
+```text
+web01 | SUCCESS => { "ping": "pong" }
+web02 | SUCCESS => { "ping": "pong" }
+```
+
+### 学んだこと
+
+AnsibleはPush型の構成管理ツールであり、操作元からSSHで対象サーバーへ接続して処理を実行する。
+管理対象サーバーにはAnsible本体ではなく、Pythonがあればよい。
+
+---
+
+## 18. AnsibleのPython interpreter warning
+
+### 事象
+
+Ansible ping実行時にPython interpreterのwarningが表示された。
+
+```text
+Host 'web01' is using the discovered Python interpreter at '/usr/bin/python3.9'
+```
+
+### 原因
+
+Ansibleが接続先のPythonを自動検出していた。
+将来別のPythonがインストールされた場合、検出されるPythonが変わる可能性があるためwarningが出た。
+
+### 対応
+
+`inventory/hosts.ini` にPython interpreterを明示した。
+
+```ini
+[web:vars]
+ansible_python_interpreter=/usr/bin/python3.9
+```
+
+### 学んだこと
+
+Ansibleは接続先でPythonモジュールを実行する。
+Amazon Linux 2023では `/usr/bin/python3.9` を明示することで、warningを抑制できる。
+
+---
+
+## 19. 書籍のRuby / Railsバージョンが古かった
+
+### 事象
+
+書籍では以下のバージョンが指定されていた。
+
+```bash
+rbenv install 2.6.6
+rbenv global 2.6.6
+gem install rails -v 5.1.6
+```
+
+### 原因
+
+書籍が2023年以前の環境を前提としており、Ruby 2.6 / Rails 5.1は現在では古い。
+Ruby 2.6系はEOLであり、Amazon Linux 2023のOpenSSL 3系との相性でも問題が出る可能性がある。
+
+### 対応
+
+書籍の手順は参考にしつつ、実際のポートフォリオでは新しいバージョンを採用する方針にした。
+
+採用方針:
+
+```text
+Ruby 3系
+Rails 7系以降
+```
+
+Ansibleではrbenvを使い、Rubyバージョンを変数として管理する。
+
+```yaml
+vars:
+  ruby_version: "3.3.6"
+```
+
+### 学んだこと
+
+書籍の手順をそのまま写すのではなく、現在のOS、ミドルウェア、セキュリティサポート状況に合わせて読み替える必要がある。
+古い手順を現代環境に移植すること自体が重要な学習になる。
+
+---
+
+## 20. まとめ
+
+今回の構築では、AWSリソースそのものだけでなく、以下の運用上の観点も確認できた。
+
+- 構築前の残存リソース確認
+- 削除順序と依存関係
+- Amazon Linux 2023への読み替え
+- DNSのPublic / Privateの違い
+- SES Sandbox制約
+- ElastiCacheやRDSなどマネージドサービスの依存関係
+- Ansible実行時のSSH安定性
+- インスタンスタイプ選定
+- コスト確認
+
+今後は、これらの学びをTerraform化、Railsデプロイ、CloudWatch監視、CI/CD構成へ反映していく。
+

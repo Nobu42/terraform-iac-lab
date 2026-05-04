@@ -38,10 +38,9 @@
 | :--- | :--- | :--- | :--- | :--- |
 | Public | sample-subnet-public01 | ap-northeast-1a | 10.0.0.0/20 | ALB / NAT Gateway / Bastion |
 | Public | sample-subnet-public02 | ap-northeast-1c | 10.0.16.0/20 | ALB / NAT Gateway |
-| Private | sample-subnet-private01 | ap-northeast-1a | 10.0.64.0/20 | Web/AP / RDS Subnet Group |
-| Private | sample-subnet-private02 | ap-northeast-1c | 10.0.80.0/20 | Web/AP / RDS Subnet Group |
 | Private | sample-subnet-private01 | ap-northeast-1a | 10.0.64.0/20 | Web/AP / RDS Subnet Group / ElastiCache Subnet Group |
 | Private | sample-subnet-private02 | ap-northeast-1c | 10.0.80.0/20 | Web/AP / RDS Subnet Group / ElastiCache Subnet Group |
+
 
 ### 3.3 インターネット接続
 

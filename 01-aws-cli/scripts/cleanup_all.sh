@@ -1,34 +1,46 @@
 #!/bin/bash
-
-#
-# スクリプト実行後に以下で確認する。
-#
-# aws sts get-caller-identity --profile learning
-# aws configure list --profile learning
-#
-# 起動順
-# ./01_vpc_setup.sh
-# ./02_subnet_setup.sh
-# ./03_internetgateway_setup.sh
-# ./04_nat_gateway_setup.sh
-# ./05_route_table_setup.sh
-# ./06_security_group_setup.sh
-# ./07_bastion_server_setup.sh
-# ./08_Web_server_setup.sh
-# ./09_LoadBalancer_setup.sh
-# ./10_Database_setup.sh
-# ./11_s3_setup.sh
-# ./12_public_dns_setup.sh
-# ./14_private_dns_setup.sh
-# ./15_acm_certificate_setup.sh
-#
-# メール受信を使う日だけ
-# ./18_ses_receiving_setup.sh
-#
-# 送信テストする日だけ
-# python3 17_sendmail_test.py
-
 set -euo pipefail
+
+#
+# cleanup_all.sh
+#
+# AWS CLI学習環境で作成した日次リソースを削除するスクリプト。
+#
+# このスクリプトは、学習時だけAWSリソースを作成し、
+# 学習終了後に課金対象リソースを削除する運用を前提とする。
+#
+# 削除する主なリソース:
+# - VPC / Subnet / Route Table / Internet Gateway / NAT Gateway / Elastic IP
+# - Security Group
+# - EC2
+# - ALB / Target Group / Listener
+# - RDS
+# - ElastiCache
+# - S3 bucket
+# - Route 53 Private Hosted Zone
+# - 日次利用のPublic DNSレコード
+# - SES受信用MXレコード / Receipt Rule / 受信用S3 bucket
+#
+# 削除せず残すリソース:
+# - ドメイン登録
+# - Route 53 Public Hosted Zone
+# - ACM証明書
+# - ACM DNS検証用CNAME
+# - SES Domain Identity
+# - SES DKIM / SPF / DMARC レコード
+# - SES SMTP用IAMユーザー
+#
+# 注意:
+# - このスクリプトは実AWSリソースを削除する。
+# - 実行前に必ずAWSアカウントとプロファイルを確認する。
+# - sample-vpc が複数残っている場合、このスクリプトは1件ずつ削除する想定。
+#   その場合は cleanup_all.sh を複数回実行し、check_cleanup.sh で確認する。
+#
+# 実行後の確認:
+#
+#   ./check_cleanup.sh
+#   ./check_cost.sh
+#
 
 PROFILE="learning"
 REGION="ap-northeast-1"
@@ -53,6 +65,11 @@ DB_SUBNET_GROUP_NAME="sample-db-subnet"
 DB_PARAMETER_GROUP_NAME="sample-db-pg"
 DB_OPTION_GROUP_NAME="sample-db-og"
 
+# ElastiCache
+ELASTICACHE_REPLICATION_GROUP_ID="sample-elasticache"
+ELASTICACHE_SUBNET_GROUP_NAME="sample-elasticache-sg"
+ELASTICACHE_SG_NAME="sample-sg-elasticache"
+
 # S3 / IAM Role for Web
 BUCKET_NAME="nobu-terraform-iac-lab-upload"
 ROLE_NAME="sample-role-web"
@@ -66,7 +83,8 @@ MAIL_BUCKET_NAME="nobu-iac-lab-mailbox"
 RECEIPT_RULE_SET_NAME="sample-ruleset"
 RECEIPT_RULE_NAME="sample-rule-inquiry"
 
-# LocalStack向けのaliasや環境変数が残っていると、実AWSではなくLocalStackへ接続してしまう。
+# LocalStack向けのaliasや環境変数が残っていると、
+# 実AWSではなくLocalStackへ接続してしまう。
 unalias aws 2>/dev/null || true
 unset AWS_ENDPOINT_URL
 unset LOCALSTACK_HOST
@@ -84,6 +102,10 @@ aws sts get-caller-identity \
   --output table
 
 echo "=== Get VPC ID ==="
+# 削除対象となるVPCをNameタグから取得する。
+# 何らかの理由で sample-vpc が複数残っている場合は、
+# ここでは先頭1件のみを削除対象にする。
+# その場合は削除後に再度 cleanup_all.sh を実行する。
 VPC_ID=$(aws ec2 describe-vpcs \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -99,6 +121,8 @@ else
 fi
 
 echo "=== Get Public Hosted Zone ID ==="
+# Public Hosted Zone自体はドメイン管理に必要なため削除しない。
+# ここでは日次で作成する一時レコードを削除するためにHosted Zone IDだけ取得する。
 PUBLIC_HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
   --profile "$PROFILE" \
   --dns-name "$DOMAIN_NAME_DOT" \
@@ -114,6 +138,8 @@ else
 fi
 
 echo "=== Delete Public DNS Records for Daily Lab Resources ==="
+# bastion と www は、EC2やALBを作り直すたびに向き先が変わる。
+# 日次削除時にはレコードだけ削除し、Public Hosted Zoneは残す。
 if [ -n "$PUBLIC_HOSTED_ZONE_ID" ]; then
   for record_name in "${PUBLIC_DNS_RECORDS[@]}"; do
     RECORD_JSON=$(aws route53 list-resource-record-sets \
@@ -169,14 +195,20 @@ if [ "$RULE_SET_EXISTS" = "true" ]; then
     --rule-set-name "$RECEIPT_RULE_SET_NAME" \
     --rule-name "$RECEIPT_RULE_NAME" 2>/dev/null || echo "Receipt rule already deleted or not found."
 
+  echo "Disabling active receipt rule set."
+
+  # ActiveなReceipt Rule Setは削除できない場合があるため、
+  # 先にActive設定を解除してからRule Set削除を試みる。
+  aws ses set-active-receipt-rule-set \
+    --profile "$PROFILE" \
+    --region "$REGION" 2>/dev/null || echo "Could not disable active receipt rule set."
+
   echo "Deleting receipt rule set: $RECEIPT_RULE_SET_NAME"
 
   aws ses delete-receipt-rule-set \
     --profile "$PROFILE" \
     --region "$REGION" \
     --rule-set-name "$RECEIPT_RULE_SET_NAME" 2>/dev/null || echo "Receipt rule set could not be deleted."
-
-  echo "Active receipt rule set may become empty."
 else
   echo "Receipt Rule Set not found."
 fi
@@ -217,6 +249,8 @@ EOF
 fi
 
 echo "=== Delete ALB Listener / Load Balancer / Target Group ==="
+# Target GroupはALB Listenerから参照されていると削除できない。
+# そのため Listener -> Load Balancer -> Target Group の順で削除する。
 LB_ARN=$(aws elbv2 describe-load-balancers \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -273,6 +307,8 @@ else
 fi
 
 echo "=== Delete RDS Instance ==="
+# RDSはDB Subnet GroupやSecurity Groupに依存する。
+# 先にDB Instanceを削除し、削除完了を待ってから関連リソースを削除する。
 DB_STATUS=$(aws rds describe-db-instances \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -299,7 +335,46 @@ else
   echo "No RDS instance found."
 fi
 
+echo "=== Delete ElastiCache Replication Group / Subnet Group ==="
+# ElastiCacheはPrivate SubnetとSecurity Groupに依存する。
+# 先に削除しないとSubnetやSecurity Groupを削除できない。
+#
+# Replication Group削除後にCache Subnet Groupを削除する。
+# Cache Subnet Groupが残っていると、後続のSubnet削除でDependencyViolationになることがある。
+REPLICATION_GROUP_STATUS=$(aws elasticache describe-replication-groups \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --replication-group-id "$ELASTICACHE_REPLICATION_GROUP_ID" \
+  --query 'ReplicationGroups[0].Status' \
+  --output text 2>/dev/null || true)
+
+if [ "$REPLICATION_GROUP_STATUS" != "None" ] && [ -n "$REPLICATION_GROUP_STATUS" ]; then
+  echo "Deleting ElastiCache replication group: $ELASTICACHE_REPLICATION_GROUP_ID"
+
+  aws elasticache delete-replication-group \
+    --profile "$PROFILE" \
+    --region "$REGION" \
+    --replication-group-id "$ELASTICACHE_REPLICATION_GROUP_ID" \
+    --no-retain-primary-cluster >/dev/null
+
+  echo "Waiting for ElastiCache replication group to be deleted..."
+  aws elasticache wait replication-group-deleted \
+    --profile "$PROFILE" \
+    --region "$REGION" \
+    --replication-group-id "$ELASTICACHE_REPLICATION_GROUP_ID"
+else
+  echo "No ElastiCache replication group found."
+fi
+
+echo "Deleting ElastiCache subnet group: $ELASTICACHE_SUBNET_GROUP_NAME"
+aws elasticache delete-cache-subnet-group \
+  --profile "$PROFILE" \
+  --region "$REGION" \
+  --cache-subnet-group-name "$ELASTICACHE_SUBNET_GROUP_NAME" 2>/dev/null || echo "ElastiCache subnet group already deleted or not found."
+
 echo "=== Delete IAM Instance Profile Associations from EC2 ==="
+# EC2にInstance Profileが付いたままだと、後続のIAM Role / Instance Profile削除で
+# 依存関係が残ることがあるため、EC2削除前に関連付けを外す。
 if [ -n "$VPC_ID" ]; then
   INSTANCE_IDS_FOR_PROFILE=$(aws ec2 describe-instances \
     --profile "$PROFILE" \
@@ -329,6 +404,8 @@ if [ -n "$VPC_ID" ]; then
 fi
 
 echo "=== Terminate EC2 Instances ==="
+# VPC内に残っているBastion / Web EC2をterminateする。
+# EC2が残っているとSubnetやSecurity Groupを削除できない。
 if [ -n "$VPC_ID" ]; then
   INSTANCE_IDS=$(aws ec2 describe-instances \
     --profile "$PROFILE" \
@@ -358,8 +435,11 @@ else
 fi
 
 echo "=== Delete custom Security Groups ==="
+# Security Groupは依存関係が外れた後に削除する。
+# ElastiCache、RDS、ALB、EC2が残っているとDependencyViolationになるため、
+# それらの削除後に実行する。
 if [ -n "$VPC_ID" ]; then
-  for sg_name in sample-sg-db sample-sg-web sample-sg-bastion sample-sg-elb; do
+  for sg_name in sample-sg-db "$ELASTICACHE_SG_NAME" sample-sg-web sample-sg-bastion sample-sg-elb; do
     SG_ID=$(aws ec2 describe-security-groups \
       --profile "$PROFILE" \
       --region "$REGION" \
@@ -378,6 +458,7 @@ if [ -n "$VPC_ID" ]; then
 fi
 
 echo "=== Delete DB Subnet / Parameter / Option Groups ==="
+# RDS Instance削除後に、RDS関連の補助リソースを削除する。
 aws rds delete-db-subnet-group \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -444,6 +525,8 @@ else
 fi
 
 echo "=== Delete custom Route Tables ==="
+# Route TableはSubnetとの関連付けを解除してから削除する。
+# Main Route Tableは削除対象外。
 if [ -n "$VPC_ID" ]; then
   RT_IDS=$(aws ec2 describe-route-tables \
     --profile "$PROFILE" \
@@ -477,6 +560,7 @@ if [ -n "$VPC_ID" ]; then
 fi
 
 echo "=== Collect Elastic IP Allocation IDs ==="
+# NAT Gateway削除後にElastic IPを解放するため、先にAllocation IDを控える。
 ALLOC_IDS=$(aws ec2 describe-addresses \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -485,6 +569,8 @@ ALLOC_IDS=$(aws ec2 describe-addresses \
   --output text)
 
 echo "=== Delete NAT Gateways ==="
+# NAT Gatewayは削除に時間がかかる。
+# NAT Gatewayが残っている間はSubnetやEIPの削除に失敗することがある。
 if [ -n "$VPC_ID" ]; then
   NAT_IDS=$(aws ec2 describe-nat-gateways \
     --profile "$PROFILE" \
@@ -513,6 +599,8 @@ if [ -n "$VPC_ID" ]; then
 fi
 
 echo "=== Release Elastic IPs ==="
+# NAT Gateway用に確保したElastic IPを解放する。
+# 解放し忘れると未関連EIPとして課金対象になる場合がある。
 for alloc_id in $ALLOC_IDS; do
   echo "Releasing EIP: $alloc_id"
   aws ec2 release-address \
@@ -522,6 +610,7 @@ for alloc_id in $ALLOC_IDS; do
 done
 
 echo "=== Detach and Delete Internet Gateway ==="
+# Internet GatewayはVPCからdetachしてからdeleteする。
 if [ -n "$VPC_ID" ]; then
   IGW_ID=$(aws ec2 describe-internet-gateways \
     --profile "$PROFILE" \
@@ -547,6 +636,8 @@ if [ -n "$VPC_ID" ]; then
 fi
 
 echo "=== Delete Subnets ==="
+# Subnetは、EC2 / RDS / ElastiCache / NAT Gatewayなどの依存が残っていると削除できない。
+# ここまでの削除順で依存関係を外した後に削除する。
 if [ -n "$VPC_ID" ]; then
   SUBNET_IDS=$(aws ec2 describe-subnets \
     --profile "$PROFILE" \
@@ -565,6 +656,7 @@ if [ -n "$VPC_ID" ]; then
 fi
 
 echo "=== Delete Key Pair ==="
+# 学習用に作成したKey Pairを削除し、ローカルのpemファイルも削除する。
 aws ec2 delete-key-pair \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -573,6 +665,7 @@ aws ec2 delete-key-pair \
 rm -f "$KEY_FILE"
 
 echo "=== Delete VPC ==="
+# すべての依存リソース削除後にVPCを削除する。
 if [ -n "$VPC_ID" ]; then
   aws ec2 delete-vpc \
     --profile "$PROFILE" \
@@ -583,6 +676,7 @@ else
 fi
 
 echo "=== Delete S3 Objects and Bucket for Web Upload ==="
+# S3バケットは空でないと削除できないため、先に中身を削除する。
 if aws s3api head-bucket \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -604,6 +698,8 @@ else
 fi
 
 echo "=== Delete S3 Objects and Bucket for SES Receiving ==="
+# SES受信用バケットも日次削除対象。
+# 受信メールはraw MIME形式で保存されているため、必要なら削除前に別途退避する。
 if aws s3api head-bucket \
   --profile "$PROFILE" \
   --region "$REGION" \
@@ -625,6 +721,8 @@ else
 fi
 
 echo "=== Delete IAM Role and Instance Profile for Web EC2 ==="
+# Web EC2用のIAM RoleとInstance Profileを削除する。
+# RoleにPolicyが付いたままだとRole削除に失敗するため、先にdetachする。
 aws iam detach-role-policy \
   --profile "$PROFILE" \
   --role-name "$ROLE_NAME" \
@@ -657,7 +755,7 @@ echo "  - Run setup scripts again from 01 to the needed step."
 echo "  - Re-run 12_public_dns_setup.sh after ALB/Bastion creation."
 echo "  - Re-run 14_private_dns_setup.sh after EC2/RDS creation."
 echo "  - Re-run 15_acm_certificate_setup.sh to attach existing ACM certificate to new ALB."
-echo "  - Re-run 17_ses_receiving_setup.sh if you want to receive inquiry mail again."
+echo "  - Re-run 18_ses_receiving_setup.sh if you want to receive inquiry mail again."
 echo "  - Check costs with check_cost.sh and check cleanup with check_cleanup.sh."
 echo "================================================"
 
