@@ -26,6 +26,18 @@ INSTANCE_TYPE="t3.small"
 WEB01_NAME="sample-ec2-web01"
 WEB02_NAME="sample-ec2-web02"
 
+# Webサーバー起動時に使用するAMIの切り替え設定。
+#
+# false:
+#   Amazon Linux 2023の最新AMIをSSM Parameter Storeから取得して使用する。
+#
+# true:
+#   AnsibleでRuby、Bundler、nginx、deployユーザーを導入済みの
+#   カスタムAMIを使用する。毎回Rubyをソースビルドしないため、
+#   日次の再構築時間を短縮できる。
+USE_CUSTOM_WEB_AMI=true
+CUSTOM_WEB_AMI_ID="ami-00f86224c38cc3b8c"
+
 # ALBからWebサーバーへ転送するアプリケーション用ポート。
 # 後続のALB設定でもこのポートを使う。
 APP_PORT="3000"
@@ -36,14 +48,26 @@ unalias aws 2>/dev/null || true
 unset AWS_ENDPOINT_URL
 unset LOCALSTACK_HOST
 
-# Amazon Linux 2023の最新AMI IDをSSM Parameter Storeから取得する。
-# AMI IDはリージョンや時期で変わるため、固定値ではなくAWS管理のパラメータから取得する。
-AMI_ID=$(aws ssm get-parameter \
-  --profile "$PROFILE" \
-  --region "$REGION" \
-  --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
-  --query 'Parameter.Value' \
-  --output text)
+# Webサーバー起動時に使用するAMI IDを決める。
+#
+# カスタムAMIを使う場合:
+#   Ruby導入済みAMIを使い、AnsibleのRubyビルド時間を短縮する。
+#
+# カスタムAMIを使わない場合:
+#   Amazon Linux 2023の最新AMI IDをSSM Parameter Storeから取得する。
+#   AMI IDはリージョンや時期で変わるため、固定値ではなくAWS管理のパラメータから取得する。
+if [ "$USE_CUSTOM_WEB_AMI" = "true" ]; then
+  AMI_ID="$CUSTOM_WEB_AMI_ID"
+  AMI_SOURCE="custom web base AMI"
+else
+  AMI_ID=$(aws ssm get-parameter \
+    --profile "$PROFILE" \
+    --region "$REGION" \
+    --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
+    --query 'Parameter.Value' \
+    --output text)
+  AMI_SOURCE="latest Amazon Linux 2023 AMI from SSM Parameter Store"
+fi
 
 # 取得したIDが空、または None の場合にスクリプトを止めるための関数。
 # 必要なリソースが見つからないままEC2作成へ進むのを防ぐ。
@@ -146,6 +170,7 @@ echo "Bastion Public IP: $BASTION_PUBLIC_IP"
 echo "Bastion Security Group: $BASTION_SG_ID"
 echo "ELB Security Group: $ELB_SG_ID"
 echo "AMI: $AMI_ID"
+echo "AMI Source: $AMI_SOURCE"
 
 echo "=== Create Web Security Group ==="
 
@@ -287,4 +312,3 @@ Host web02
   IdentitiesOnly yes
   ProxyJump bastion
 EOF
-
