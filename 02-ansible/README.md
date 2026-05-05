@@ -64,7 +64,9 @@ web01 / web02
     ├── 05_ruby.yml
     ├── 06_rails.yml
     ├── 07_puma.yml
-    └── 08_sample_app_rails72.yml
+    ├── 08_sample_app_rails72.yml
+    ├── site.yml
+    └── site_full.yml
 ```
 
 ## Inventory
@@ -140,16 +142,50 @@ Ansible側では以下を実行します。
 ```bash
 cd /Users/nobu/terraform-iac-lab/02-ansible
 
-ansible-playbook playbooks/01_ping.yml
-ansible-playbook playbooks/04_nginx.yml
-
 export DB_MASTER_PASSWORD='RDS作成時のパスワード'
 export SECRET_KEY_BASE=$(openssl rand -hex 64)
 
-ansible-playbook playbooks/08_sample_app_rails72.yml
+ansible-playbook playbooks/site.yml
 ```
 
 必要に応じて `02_packages.yml`、`03_deploy_user.yml`、`05_ruby.yml` を再実行しても、基本的には冪等に処理されます。
+
+### まとめPlaybook
+
+日次再構築では、カスタムAMIを使う前提で以下を実行します。
+
+```bash
+export DB_MASTER_PASSWORD='RDS作成時のパスワード'
+export SECRET_KEY_BASE=$(openssl rand -hex 64)
+ansible-playbook playbooks/site.yml
+```
+
+`site.yml` の内容:
+
+```yaml
+- import_playbook: 01_ping.yml
+- import_playbook: 04_nginx.yml
+- import_playbook: 08_sample_app_rails72.yml
+```
+
+Amazon Linux 2023の公式AMIからRubyビルドも含めて構築する場合は、以下を使います。
+
+```bash
+export DB_MASTER_PASSWORD='RDS作成時のパスワード'
+export SECRET_KEY_BASE=$(openssl rand -hex 64)
+ansible-playbook playbooks/site_full.yml
+```
+
+`site_full.yml` の内容:
+
+```yaml
+- import_playbook: 01_ping.yml
+- import_playbook: 02_packages.yml
+- import_playbook: 03_deploy_user.yml
+- import_playbook: 04_nginx.yml
+- import_playbook: 05_ruby.yml
+- import_playbook: 08_sample_app_rails72.yml
+```
 
 ## Playbook一覧
 
@@ -163,6 +199,8 @@ ansible-playbook playbooks/08_sample_app_rails72.yml
 | `06_rails.yml` | Rails 7.2の雛形作成用。現在は検証用として残している |
 | `07_puma.yml` | Puma単体設定用。現在は検証用として残している |
 | `08_sample_app_rails72.yml` | Rails 7.2サンプルアプリをproduction環境でデプロイ |
+| `site.yml` | カスタムAMI前提の日次再構築用まとめPlaybook |
+| `site_full.yml` | 公式AMIからRubyビルドも含めて構築するフル実行Playbook |
 
 現在の主なデプロイ対象は `08_sample_app_rails72.yml` です。
 
@@ -302,6 +340,28 @@ sudo systemctl status nginx --no-pager
 - 画像投稿後、S3にオブジェクトが作成されること
 - web01 / web02 のPumaとnginxがactiveであること
 
+## Railsアプリの機能範囲
+
+現時点では、AWS上でのデプロイ、RDS接続、S3画像保存、複数Web EC2構成の確認を目的としているため、Railsアプリの機能は最小限にしています。
+
+実装済み:
+
+- ユーザー登録
+- ログイン / ログアウト
+- 投稿
+- 画像アップロード
+- 投稿画像のS3保存
+
+現時点では追加しないもの:
+
+- フォロー機能
+- いいね機能
+- コメント機能
+- パスワードリセット
+- メール認証
+
+Railsアプリ自体を大きくするよりも、AWS構成、Ansibleによる再現性、ログ調査、運用改善を優先します。
+
 ## 対応した主なトラブル
 
 詳細は [Troubleshooting](../docs/Troubleshooting.md) を参照してください。
@@ -326,10 +386,10 @@ sudo systemctl status nginx --no-pager
 
 ## 今後の予定
 
-- Ansible実行をまとめる `site.yml` の作成
-- Railsアプリの機能整理
 - CloudWatch Logsでnginx / Pumaログを収集
 - EC2 / ALB / RDSのメトリクス監視
+- ALB Target GroupのHealthyHostCount / 5xx監視
+- Rails/Puma/nginxログの確認手順整理
 - RDS / S3 / AMIのバックアップ設計強化
 - Terraform化
 - Auto Scaling Group化

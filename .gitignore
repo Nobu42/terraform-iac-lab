@@ -10,3 +10,4 @@ tags
 *.org
 git_commit.sh
 docs/ssh_config
+02-ansible/run_site_local.sh

@@ -651,8 +651,8 @@
           end
 
           if user.posts.count.zero?
-            user.posts.create!(content: "Rails 7.2 sample app is running on AWS.")
-            user.posts.create!(content: "Images are handled by Active Storage and can be stored in S3.")
+            user.posts.create!(content: "Rails 7.2 application deployed with Ansible on AWS.")
+            user.posts.create!(content: "Post images are stored in S3 through Active Storage.")
           end
 
     # 共通レイアウト。
@@ -738,8 +738,8 @@
           <section class="hero">
             <div>
               <p class="eyebrow">Rails 7.2 on AWS</p>
-              <h1>Suneteruzu Sample App</h1>
-              <p>ユーザー登録、ログイン、投稿、画像アップロードを確認するためのRailsアプリです。</p>
+              <h1>Nobu IAC Lab</h1>
+              <p>Private EC2上のRailsアプリから、RDSへの保存とS3への画像アップロードを確認します。</p>
             </div>
             <%= image_tag "Suneteruzu.JPG", alt: "Suneteruzu", class: "hero-image" %>
           </section>
@@ -754,7 +754,7 @@
                   </div>
                 <% end %>
 
-                <%= form.text_area :content, rows: 4, maxlength: 140, placeholder: "Compose new post..." %>
+                <%= form.text_area :content, rows: 4, maxlength: 140, placeholder: "Write a short update..." %>
                 <%= form.file_field :image, accept: "image/jpeg,image/png,image/gif" %>
                 <%= form.submit "Post", class: "button" %>
               <% end %>
