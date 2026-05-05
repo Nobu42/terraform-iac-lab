@@ -1105,10 +1105,39 @@ sudo ls -l /var/www/nobu-iac-lab/log
 sudo tail -n 120 /var/www/nobu-iac-lab/log/puma.stdout.log
 ```
 
-リアルタイムで確認する場合:
+ログを確認する際は、全ログを最初から目視するのではなく、まず再現操作を行いながらリアルタイムで確認した。
 
 ```bash
 sudo journalctl -u puma-nobu-iac-lab -f
+```
+
+この状態でブラウザからログインフォームを送信し、追加で出力されるログを確認した。
+
+その後、エラーキーワードで絞り込んだ。
+
+```bash
+sudo grep -i "csrf\|authenticity\|invalid" /var/www/nobu-iac-lab/log/puma.stdout.log
+```
+
+前後の文脈を含めて確認する場合:
+
+```bash
+sudo grep -i -C 5 "InvalidAuthenticityToken" /var/www/nobu-iac-lab/log/puma.stdout.log
+```
+
+systemd journalから直近ログを絞り込む場合:
+
+```bash
+sudo journalctl -u puma-nobu-iac-lab -n 300 --no-pager | grep -i "csrf\|authenticity\|invalid"
+```
+
+今回注目したキーワード:
+
+```text
+POST /session
+422
+Can't verify CSRF token authenticity
+ActionController::InvalidAuthenticityToken
 ```
 
 ### 原因
