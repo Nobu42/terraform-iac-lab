@@ -1,27 +1,34 @@
 # 02 Ansible
 
-このディレクトリでは、Ansibleを使ってPrivate Subnet上のWebサーバーを構成管理します。
+このディレクトリでは、Ansibleを使ってPrivate Subnet上のWebサーバー `web01` / `web02` を構成管理します。
 
-AWS CLI編では、VPC、Subnet、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheなどのAWSリソースを作成しました。
-Ansible編では、作成済みのWebサーバーに対して、パッケージ導入、Ruby/Rails環境構築、アプリケーション配置、サービス起動設定を自動化していきます。
+AWS CLI編で作成したVPC、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheなどのAWSリソース上に、Rails 7.2アプリケーションをデプロイします。
 
 ## 目的
 
 - Webサーバー内部の設定をAnsibleで自動化する
-- 手作業でのパッケージ導入や設定変更をPlaybook化する
-- web01 / web02 に同じ設定を反映できるようにする
-- Railsアプリケーションのデプロイ手順を整理する
+- Bastion経由でPrivate Subnet上のWeb EC2を管理する
+- web01 / web02 に同じ設定を反映する
+- Ruby 3.3 / Rails 7.2 / Puma / nginx を構築する
+- Railsアプリケーションをproduction環境で起動する
+- RDS MySQLへ接続する
+- Active Storageで投稿画像をS3へ保存する
+- ALB + ACM + Route 53経由でHTTPS公開する
 - 後続のCloudWatch監視、Terraform化、Auto Scaling構成につなげる
 
 ## 実行環境
 
-AnsibleはローカルPCから実行する。
+AnsibleはMacから実行します。
 
 ```text
 Mac
-  ↓ Ansible
+  |
+  | Ansible / SSH
+  v
 Bastion
-  ↓ ProxyJump
+  |
+  | ProxyJump
+  v
 web01 / web02
 ```
 
@@ -33,22 +40,36 @@ web01 / web02
 | 接続経路 | Bastion経由 |
 | 対象OS | Amazon Linux 2023 |
 | 接続先Python | /usr/bin/python3.9 |
+| Ruby | 3.3.6 |
+| Rails | 7.2.3 |
+| Webサーバー | nginx |
+| Application Server | Puma |
+| DB | RDS for MySQL |
+| 画像保存 | S3 / Active Storage |
 
 ## ディレクトリ構成
 
 ```text
 02-ansible/
 ├── README.md
+├── ansible.cfg
 ├── group_vars/
 ├── inventory/
 │   └── hosts.ini
 └── playbooks/
-    └── 01_ping.yml
+    ├── 01_ping.yml
+    ├── 02_packages.yml
+    ├── 03_deploy_user.yml
+    ├── 04_nginx.yml
+    ├── 05_ruby.yml
+    ├── 06_rails.yml
+    ├── 07_puma.yml
+    └── 08_sample_app_rails72.yml
 ```
 
 ## Inventory
 
-`inventory/hosts.ini` にAnsibleの接続先を定義する。
+`inventory/hosts.ini` にAnsibleの接続先を定義します。
 
 ```ini
 [web]
@@ -61,83 +82,256 @@ ansible_ssh_common_args='-o ProxyJump=bastion'
 ansible_python_interpreter=/usr/bin/python3.9
 ```
 
-`web01`、`web02`、`bastion` は `~/.ssh/config` に定義済みであることを前提とする。
+`web01`、`web02`、`bastion` は `~/.ssh/config` に定義済みであることを前提とします。
 
-## SSH接続確認
+## 事前確認
 
-Ansibleを実行する前に、通常のSSH接続ができることを確認する。
+通常のSSH接続を確認します。
 
 ```bash
 ssh web01
 ssh web02
 ```
 
-## Ansibleインストール
-
-MacにAnsibleをインストールする。
+Ansibleの疎通確認:
 
 ```bash
-brew install ansible
+ansible-playbook playbooks/01_ping.yml
 ```
 
-バージョン確認:
+## 実行順
+
+### 通常AMIから構築する場合
+
+Amazon Linux 2023の公式AMIからWeb EC2を作成した場合は、Rubyのビルドを含めて以下を実行します。
 
 ```bash
-ansible --version
+cd /Users/nobu/terraform-iac-lab/02-ansible
+
+ansible-playbook playbooks/01_ping.yml
+ansible-playbook playbooks/02_packages.yml
+ansible-playbook playbooks/03_deploy_user.yml
+ansible-playbook playbooks/04_nginx.yml
+ansible-playbook playbooks/05_ruby.yml
 ```
 
-## 疎通確認
-
-まずAnsibleのpingモジュールで、web01 / web02 に接続できることを確認する。
+その後、Rails 7.2サンプルアプリをデプロイします。
 
 ```bash
-ansible -i inventory/hosts.ini web -m ping
+export DB_MASTER_PASSWORD='RDS作成時のパスワード'
+export SECRET_KEY_BASE=$(openssl rand -hex 64)
+
+ansible-playbook playbooks/08_sample_app_rails72.yml
 ```
 
-Playbookで確認する場合:
+### カスタムAMIから構築する場合
+
+Ruby 3.3.6 / Bundler / nginx / deployユーザー導入済みのカスタムAMIを使う場合、Rubyビルドを省略できます。
+
+この場合、AWS CLI編の `08_Web_server_setup.sh` で以下の設定を使います。
 
 ```bash
-ansible-playbook -i inventory/hosts.ini playbooks/01_ping.yml
+USE_CUSTOM_WEB_AMI=true
+CUSTOM_WEB_AMI_ID="ami-00f86224c38cc3b8c"
 ```
 
-## 01_ping.yml
+Ansible側では以下を実行します。
 
-```yaml
----
-- name: Check connection to web servers
-  hosts: web
-  gather_facts: false
+```bash
+cd /Users/nobu/terraform-iac-lab/02-ansible
 
-  tasks:
-    - name: Ping web servers
-      ansible.builtin.ping:
+ansible-playbook playbooks/01_ping.yml
+ansible-playbook playbooks/04_nginx.yml
+
+export DB_MASTER_PASSWORD='RDS作成時のパスワード'
+export SECRET_KEY_BASE=$(openssl rand -hex 64)
+
+ansible-playbook playbooks/08_sample_app_rails72.yml
 ```
 
-## 実行結果
+必要に応じて `02_packages.yml`、`03_deploy_user.yml`、`05_ruby.yml` を再実行しても、基本的には冪等に処理されます。
+
+## Playbook一覧
+
+| Playbook | 役割 |
+| :--- | :--- |
+| `01_ping.yml` | web01 / web02 へのAnsible疎通確認 |
+| `02_packages.yml` | 共通パッケージ、nginx、MariaDB client、ImageMagickなどを導入 |
+| `03_deploy_user.yml` | deployユーザーと `/var/www` を作成 |
+| `04_nginx.yml` | nginxをPuma socketへproxyする設定を作成 |
+| `05_ruby.yml` | rbenvでRuby 3.3.6とBundlerを導入 |
+| `06_rails.yml` | Rails 7.2の雛形作成用。現在は検証用として残している |
+| `07_puma.yml` | Puma単体設定用。現在は検証用として残している |
+| `08_sample_app_rails72.yml` | Rails 7.2サンプルアプリをproduction環境でデプロイ |
+
+現在の主なデプロイ対象は `08_sample_app_rails72.yml` です。
+
+## 08_sample_app_rails72.yml
+
+Rails 7.2で、書籍サンプルアプリ相当の簡易SNSアプリを構築します。
+
+主な内容:
+
+- Rails 7.2.3アプリ作成
+- ユーザー登録
+- ログイン / ログアウト
+- 投稿
+- 画像アップロード
+- Active Storage
+- S3保存
+- RDS MySQL接続
+- Puma / systemd
+- nginx連携
+- production環境でのHTTPS公開
+
+動作確認用ユーザー:
 
 ```text
-PLAY [Check connection to web servers]
-
-TASK [Ping web servers]
-ok: [web01]
-ok: [web02]
-
-PLAY RECAP
-web01 : ok=1 changed=0 unreachable=0 failed=0
-web02 : ok=1 changed=0 unreachable=0 failed=0
+nobu@example.com
+password
 ```
 
-この結果により、MacからBastion経由でPrivate Subnet上のWebサーバーへAnsible接続できることを確認した。
+## 環境変数
 
-## 次にやること
+`08_sample_app_rails72.yml` 実行前に、Mac側で以下を設定します。
 
-- 共通パッケージのインストール
-- Ruby / Rails 実行環境の構築
-- Railsアプリケーションの配置
-- RDS接続設定
-- ElastiCache Redis接続設定
-- S3アップロード設定
-- SESメール送信設定
-- Puma / systemd によるアプリケーション起動設定
-- ALB経由の動作確認
+```bash
+export DB_MASTER_PASSWORD='RDS作成時のパスワード'
+export SECRET_KEY_BASE=$(openssl rand -hex 64)
+```
 
+### DB_MASTER_PASSWORD
+
+RDS作成時に指定したmaster userのパスワードです。
+
+Playbook内には直書きせず、環境変数から読み込みます。
+
+### SECRET_KEY_BASE
+
+Rails productionでCookie署名やCSRF token検証に使う秘密鍵です。
+
+ALB配下で `web01` / `web02` の2台構成にしているため、両方のWeb EC2で同じ値を使う必要があります。
+
+値がEC2ごとに異なると、以下のように別インスタンスへ振り分けられた場合にCSRF検証で失敗します。
+
+```text
+GET  /login   -> web01
+POST /session -> web02
+```
+
+この問題を避けるため、Mac側で生成した共通値をAnsibleから `/etc/nobu-iac-lab.env` へ配布します。
+
+## アプリケーション設定ファイル
+
+Rails productionの環境変数は、各Web EC2上の以下に配置します。
+
+```text
+/etc/nobu-iac-lab.env
+```
+
+権限:
+
+```text
+owner: root
+group: deploy
+mode : 0640
+```
+
+Pumaはdeployユーザーで動作するため、deployグループに読み取り権限を付与しています。
+
+このファイルにはDBパスワードや `SECRET_KEY_BASE` が含まれるため、GitHubには保存しません。
+
+## 確認コマンド
+
+HTTPS公開確認:
+
+```bash
+curl -I https://www.nobu-iac-lab.com
+```
+
+期待する結果:
+
+```text
+HTTP/2 200
+server: nginx/1.28.3
+```
+
+S3画像保存確認:
+
+```bash
+aws s3 ls s3://nobu-terraform-iac-lab-upload --recursive --profile learning
+```
+
+画像投稿後にオブジェクトが表示されれば、Active Storage経由でS3へ保存されています。
+
+Puma状態確認:
+
+```bash
+ssh web01
+sudo systemctl status puma-nobu-iac-lab --no-pager
+```
+
+Pumaログ確認:
+
+```bash
+sudo tail -n 120 /var/www/nobu-iac-lab/log/puma.stdout.log
+sudo tail -n 120 /var/www/nobu-iac-lab/log/puma.stderr.log
+```
+
+リアルタイムログ確認:
+
+```bash
+sudo journalctl -u puma-nobu-iac-lab -f
+```
+
+nginx設定確認:
+
+```bash
+sudo nginx -t
+sudo systemctl status nginx --no-pager
+```
+
+## 動作確認項目
+
+- `https://www.nobu-iac-lab.com` でトップページが表示されること
+- 固定画像 `Suneteruzu.JPG` が表示されること
+- `nobu@example.com` / `password` でログインできること
+- 新規ユーザー登録できること
+- 投稿できること
+- 画像付き投稿ができること
+- 画像投稿後、S3にオブジェクトが作成されること
+- web01 / web02 のPumaとnginxがactiveであること
+
+## 対応した主なトラブル
+
+詳細は [Troubleshooting](../docs/Troubleshooting.md) を参照してください。
+
+- ALB配下のRailsでHTTPSリダイレクトループが発生した
+- Web EC2 2台構成でログイン時にCSRFエラーが発生した
+- Active StorageのmigrationがWeb EC2ごとに生成されてRDSで衝突した
+- 画像投稿時に `413 Request Entity Too Large` が発生した
+
+## 現在の到達点
+
+以下を確認済みです。
+
+- AnsibleでWeb EC2 2台へRails 7.2アプリをデプロイ
+- Puma + nginxでRails production起動
+- ALB + ACM + Route 53でHTTPS公開
+- RDS MySQLへ接続
+- ログイン成功
+- 投稿成功
+- 画像アップロード成功
+- Active StorageからS3への画像保存確認
+
+## 今後の予定
+
+- Ansible実行をまとめる `site.yml` の作成
+- Railsアプリの機能整理
+- CloudWatch Logsでnginx / Pumaログを収集
+- EC2 / ALB / RDSのメトリクス監視
+- RDS / S3 / AMIのバックアップ設計強化
+- Terraform化
+- Auto Scaling Group化
+- ECS/Fargate化
+- CI/CD構成
