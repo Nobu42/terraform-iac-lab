@@ -870,9 +870,81 @@ vars:
 書籍の手順をそのまま写すのではなく、現在のOS、ミドルウェア、セキュリティサポート状況に合わせて読み替える必要がある。
 古い手順を現代環境に移植すること自体が重要な学習になる。
 
+## 20. Public DNSレコード再作成後にMacで名前解決できなかった
+
+### 事象
+
+`cleanup_all.sh` で日次リソースを削除した後、翌日に `All_Setup.sh` を実行して `www.nobu-iac-lab.com` のRoute 53 Aliasレコードを再作成した。
+
+Route 53上では `www.nobu-iac-lab.com` のA Aliasレコードが存在していたが、Macから `curl` を実行すると名前解決に失敗した。
+
+```bash
+curl -I https://www.nobu-iac-lab.com
+```
+
+エラー:
+
+```text
+curl: (6) Could not resolve host: www.nobu-iac-lab.com
+```
+
+Route 53には以下のようにレコードが存在していた。
+
+```text
+www.nobu-iac-lab.com. A Alias -> sample-elb-xxxxxxxx.ap-northeast-1.elb.amazonaws.com.
+```
+
+### 原因
+
+前日に `cleanup_all.sh` で `www.nobu-iac-lab.com` の一時DNSレコードを削除した際、Mac側が「名前が存在しない」というDNS結果をキャッシュしていた可能性が高い。
+
+翌日にRoute 53へ同名レコードを再作成しても、MacのDNSキャッシュが古い結果を返していたため、`curl` では名前解決できなかった。
+
+自宅DNSにはRaspberry PiのCoreDNSを利用しているが、今回はRoute 53上のレコードが存在しており、MacのDNSキャッシュ削除で解消したため、Mac側キャッシュの影響と判断した。
+
+### 対応
+
+まずRoute 53上にPublic DNSレコードが存在することを確認した。
+
+```bash
+aws route53 list-resource-record-sets \
+  --profile learning \
+  --hosted-zone-id Z02886402CZFSQE5OSSQ \
+  --query "ResourceRecordSets[?Name==\`www.nobu-iac-lab.com.\`]" \
+  --output table
+```
+
+外部DNSで名前解決できるか確認する場合は、Google Public DNSやCloudflare DNSを明示して確認する。
+
+```bash
+dig www.nobu-iac-lab.com @8.8.8.8
+dig www.nobu-iac-lab.com @1.1.1.1
+dig www.nobu-iac-lab.com
+```
+
+MacのDNSキャッシュを削除した。
+
+```bash
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
+
+その後、再度 `curl` を実行し、名前解決できることを確認した。
+
+### 学んだこと
+
+Route 53上にレコードが存在していても、ローカル端末やローカルDNSのキャッシュにより、一時的に古い名前解決結果が返ることがある。
+
+DNSトラブル時は以下の順で切り分けるとよい。
+
+1. Route 53に対象レコードが存在するか確認する
+2. `dig @8.8.8.8` や `dig @1.1.1.1` で外部DNSから確認する
+3. 通常の `dig` でローカル環境の名前解決結果を確認する
+4. 外部DNSでは引けるがローカルだけ失敗する場合、Macや自宅DNSのキャッシュを疑う
+
 ---
 
-## 20. まとめ
+## 21. まとめ
 
 今回の構築では、AWSリソースそのものだけでなく、以下の運用上の観点も確認できた。
 
@@ -880,6 +952,7 @@ vars:
 - 削除順序と依存関係
 - Amazon Linux 2023への読み替え
 - DNSのPublic / Privateの違い
+- DNSキャッシュによる名前解決トラブルの切り分け
 - SES Sandbox制約
 - ElastiCacheやRDSなどマネージドサービスの依存関係
 - Ansible実行時のSSH安定性
@@ -887,4 +960,3 @@ vars:
 - コスト確認
 
 今後は、これらの学びをTerraform化、Railsデプロイ、CloudWatch監視、CI/CD構成へ反映していく。
-
