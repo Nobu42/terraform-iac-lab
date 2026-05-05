@@ -944,7 +944,63 @@ DNSトラブル時は以下の順で切り分けるとよい。
 
 ---
 
-## 21. まとめ
+## 21. Ruby導入済みWebベースAMIを作成した
+
+### 事象
+
+日次で `cleanup_all.sh` によりAWSリソースを削除し、翌日に `All_Setup.sh` で再構築する運用では、Ansibleの `05_ruby.yml` によるRubyソースビルドに時間がかかった。
+
+特にWeb EC2を毎回作り直す構成では、Ruby、Bundler、nginx、deployユーザーなど、毎回同じミドルウェア導入を繰り返すことになる。
+
+### 対応
+
+`web01` に対して以下のPlaybookを実行し、Ruby 3.3.6 / Bundler 4.0.11 まで導入した状態でAMIを作成した。
+
+```bash
+ansible-playbook playbooks/01_ping.yml
+ansible-playbook playbooks/02_packages.yml
+ansible-playbook playbooks/03_deploy_user.yml
+ansible-playbook playbooks/04_nginx.yml
+ansible-playbook playbooks/05_ruby.yml
+```
+
+作成コマンド:
+
+```bash
+../01-aws-cli/scripts/20_create_web_base_ami.sh
+```
+
+作成結果:
+
+```text
+AMI ID: ami-00f86224c38cc3b8c
+Name  : web-base-ruby336-rails72-20260505-102118
+State : available
+```
+
+このAMIは、次回以降 `08_Web_server_setup.sh` でWeb EC2を作成する際のベースAMIとして利用する。
+
+### 注意点
+
+AMIそのものというより、AMIに紐づくEBSスナップショットに保存料金が発生する。
+
+そのため、学習用途では以下の方針とする。
+
+- Ruby導入済みWebベースAMIは原則1世代のみ保持する
+- 古いAMIを使わなくなったら、AMI登録解除とEBSスナップショット削除を行う
+- Fast Snapshot Restoreは有効化しない
+- アプリケーション本体、DBパスワード、SES SMTPパスワード、secret_key_baseはAMIに含めない
+- RailsアプリケーションはAnsibleで後から配置する
+
+### 学んだこと
+
+毎回すべてを構築するだけでなく、時間のかかるミドルウェア導入部分をAMI化することで、再構築時間を短縮できる。
+
+一方で、AMIはバックアップ兼テンプレートとして便利だが、EBSスナップショットの削除漏れが課金につながるため、作成だけでなく削除運用も合わせて設計する必要がある。
+
+---
+
+## 22. まとめ
 
 今回の構築では、AWSリソースそのものだけでなく、以下の運用上の観点も確認できた。
 
@@ -957,6 +1013,7 @@ DNSトラブル時は以下の順で切り分けるとよい。
 - ElastiCacheやRDSなどマネージドサービスの依存関係
 - Ansible実行時のSSH安定性
 - インスタンスタイプ選定
+- Ruby導入済みAMIによる再構築時間短縮
 - コスト確認
 
 今後は、これらの学びをTerraform化、Railsデプロイ、CloudWatch監視、CI/CD構成へ反映していく。

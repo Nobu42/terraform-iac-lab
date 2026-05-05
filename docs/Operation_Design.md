@@ -249,6 +249,53 @@ S3は学習用データを保存する用途とし、学習終了時に削除す
 - 暗号化
 - アクセスログ
 
+### EC2 AMI
+
+日次でAWSリソースを削除し、翌日に再構築する運用では、Rubyのソースビルドに時間がかかる。
+
+そのため、Ansibleで以下を導入した直後のWeb EC2をベースAMIとして保存し、次回以降のWeb EC2作成時間を短縮する。
+
+AMIに含めるもの:
+
+- Amazon Linux 2023
+- 共通パッケージ
+- deployユーザー
+- nginx
+- rbenv
+- Ruby 3.3.6
+- Bundler
+
+AMIに含めないもの:
+
+- Railsアプリケーション本体
+- DBパスワード
+- SES SMTPパスワード
+- secret_key_base
+- 投稿画像
+- 一時ログ
+
+作成済みAMI:
+
+```text
+AMI ID: ami-00f86224c38cc3b8c
+Name  : web-base-ruby336-rails72-20260505-102118
+```
+
+AMIは `20_create_web_base_ami.sh` で作成する。
+
+```bash
+cd 01-aws-cli/scripts
+./20_create_web_base_ami.sh
+```
+
+運用上の注意:
+
+- AMIは裏側でEBSスナップショットを保持するため、不要なAMIとスナップショットは削除する
+- 古いAMIを複数世代残し続けると、スナップショット保存料金が増える
+- 学習用途では原則1世代のみ保持する
+- OSやRubyの更新が必要になった場合は、新しいAMIを作成し直す
+- アプリケーションや秘密情報はAMIへ焼き込まず、Ansibleや環境変数で後から設定する
+
 ## セキュリティ運用
 
 - rootユーザーは通常利用しない
@@ -392,4 +439,3 @@ AWS Budgetsで予算を設定し、一定金額を超えた場合に通知を受
 - Route 53、SES、ACM、IAMなど残すリソースを確認する
 - ドキュメントと構成図を最新化する
 - Terraform化、監視設定、デプロイ手順の進捗を確認する
-
