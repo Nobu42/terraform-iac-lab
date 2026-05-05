@@ -179,16 +179,25 @@ aws logs filter-log-events \
   --filter-pattern "InvalidAuthenticityToken" \
   --output table
 ```
+## 現在の到達点
+
+- CloudWatch Agentをweb01 / web02へ導入
+- nginx access/error logをCloudWatch Logsへ送信
+- Puma stdout/stderr logをCloudWatch Logsへ送信
+- Log Group保持期間を7日に設定
+- site.ymlへCloudWatch Agent設定を追加
+
+## 次に追加する監視
+
+- EC2 CPU / StatusCheck
+- ALB Target Group HealthyHostCount / 5xx
+- RDS CPU / FreeStorageSpace / DatabaseConnections
 
 ## 今後の拡張
 
-CloudWatch Logs確認後、以下へ進みます。
-
-- EC2 CPU / StatusCheckの監視
-- ALB Target Group HealthyHostCount / 5xxの監視
-- RDS CPU / FreeStorageSpace / DatabaseConnectionsの監視
-- ElastiCache CPU / memory / connectionの監視
-- CloudWatch Alarm作成
-- CloudWatch Dashboard作成
-- ログ保持期間の設定
+- ElastiCache監視
+- CloudWatch Alarm
+- CloudWatch Dashboard
 - 運用確認手順の整理
+
+
