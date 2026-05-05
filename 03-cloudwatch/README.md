@@ -4,6 +4,8 @@
 
 まずはEC2上のnginx / PumaログをCloudWatch Logsへ集約し、アプリケーションの動作確認やトラブル調査に利用できる状態を目指します。
 
+現在、CloudWatch Agentによるnginx / Pumaログの収集まで確認済みです。
+
 ## 目的
 
 - EC2上のログをCloudWatch Logsへ集約する
@@ -60,17 +62,17 @@ Log StreamにはEC2インスタンスIDやホスト名を含め、`web01` / `web
 
 CloudWatch Logsへのログ転送にはCloudWatch Agentを利用します。
 
-想定作業:
+実施内容:
 
-1. Web EC2のIAM RoleにCloudWatch Logs送信用権限を追加する
-2. AnsibleでCloudWatch Agentをインストールする
-3. CloudWatch Agent設定ファイルを配置する
-4. CloudWatch Agentを起動、自動起動化する
-5. CloudWatch Logsにログイベントが届くことを確認する
+1. Web EC2のIAM RoleにCloudWatch Logs送信用権限を追加した
+2. AnsibleでCloudWatch Agentをインストールした
+3. CloudWatch Agent設定ファイルを配置した
+4. CloudWatch Agentを起動、自動起動化した
+5. CloudWatch Logsにログイベントが届くことを確認した
 
-## Ansibleで追加予定のPlaybook
+## Ansible Playbook
 
-Ansible編に以下のPlaybookを追加する予定です。
+Ansible編に以下のPlaybookを追加しました。
 
 ```text
 02-ansible/playbooks/09_cloudwatch_agent.yml
@@ -82,6 +84,54 @@ Ansible編に以下のPlaybookを追加する予定です。
 - ログ収集設定ファイルの配置
 - CloudWatch Agentの起動
 - CloudWatch Agentの状態確認
+
+日次再構築用の `site.yml` にも追加済みです。
+
+```yaml
+- import_playbook: 09_cloudwatch_agent.yml
+```
+
+## 確認済み
+
+CloudWatch Agentは `web01` / `web02` の両方で起動済みです。
+
+```text
+status: running
+configstatus: configured
+version: 1.300064.2
+```
+
+Log Groupは以下を確認済みです。
+
+```text
+/nobu-iac-lab/nginx/access
+/nobu-iac-lab/nginx/error
+/nobu-iac-lab/puma/stdout
+/nobu-iac-lab/puma/stderr
+```
+
+各Log Groupの保持期間は7日です。
+
+`/nobu-iac-lab/puma/stdout` では、`web01` / `web02` それぞれのLog Streamが作成されることを確認しました。
+
+```text
+i-00a0a32ed5b654e95
+i-0852dd2d2ec66f138
+```
+
+Puma stdoutでは、Railsのリクエストログを検索できることを確認しました。
+
+```text
+Started GET "/"
+Started GET "/login"
+Started GET "/users/new"
+```
+
+nginx access logでは、ALB Health Checkのアクセスログを確認しました。
+
+```text
+ELB-HealthChecker/2.0
+```
 
 ## 確認観点
 
@@ -142,4 +192,3 @@ CloudWatch Logs確認後、以下へ進みます。
 - CloudWatch Dashboard作成
 - ログ保持期間の設定
 - 運用確認手順の整理
-

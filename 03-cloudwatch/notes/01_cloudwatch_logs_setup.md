@@ -162,3 +162,204 @@ CloudWatch Logs設定後、以下を行う。
 - DashboardでEC2 / ALB / RDSを一覧化する
 - CloudWatch Logs Insightsで検索できるようにする
 
+## 実行結果
+
+`09_cloudwatch_agent.yml` を実行し、CloudWatch Agentの導入とログ送信を確認した。
+
+実行コマンド:
+
+```bash
+cd /Users/nobu/terraform-iac-lab/02-ansible
+ansible-playbook playbooks/09_cloudwatch_agent.yml
+```
+
+実行結果:
+
+```text
+web01: failed=0
+web02: failed=0
+CloudWatch Agent status: running
+configstatus: configured
+version: 1.300064.2
+```
+
+途中で発生した権限エラー:
+
+```text
+AccessDeniedException: not authorized to perform: logs:CreateLogGroup
+```
+
+原因:
+
+起動中のWeb EC2に関連付いているIAM Role `sample-role-web` に、CloudWatch Logs送信用の権限がまだ付与されていなかった。
+
+対応:
+
+`11_s3_setup.sh` を修正し、Web EC2用IAM Roleに以下のAWS管理ポリシーを追加した。
+
+```text
+CloudWatchAgentServerPolicy
+```
+
+既存EC2へ反映するため、以下を再実行した。
+
+```bash
+cd /Users/nobu/terraform-iac-lab/01-aws-cli/scripts
+./11_s3_setup.sh
+```
+
+次に発生した競合エラー:
+
+```text
+OperationAbortedException: A conflicting operation is currently in progress against this resource.
+```
+
+原因:
+
+`web01` / `web02` が同じLog Groupに対して同時に `put-retention-policy` を実行し、CloudWatch Logs側で競合した。
+
+対応:
+
+Log Group作成と保持期間設定は全EC2で実行する必要がないため、Ansibleの該当タスクに `run_once: true` を設定した。
+
+```yaml
+run_once: true
+```
+
+## 確認結果
+
+Log Group一覧:
+
+```bash
+aws logs describe-log-groups \
+  --profile learning \
+  --region ap-northeast-1 \
+  --log-group-name-prefix /nobu-iac-lab \
+  --output table
+```
+
+確認できたLog Group:
+
+```text
+/nobu-iac-lab/nginx/access
+/nobu-iac-lab/nginx/error
+/nobu-iac-lab/puma/stdout
+/nobu-iac-lab/puma/stderr
+```
+
+保持期間:
+
+```text
+retentionInDays: 7
+```
+
+Puma stdoutのLog Stream確認:
+
+```bash
+aws logs describe-log-streams \
+  --profile learning \
+  --region ap-northeast-1 \
+  --log-group-name /nobu-iac-lab/puma/stdout \
+  --order-by LastEventTime \
+  --descending \
+  --output table
+```
+
+確認できたLog Stream:
+
+```text
+i-00a0a32ed5b654e95
+i-0852dd2d2ec66f138
+```
+
+Puma stdoutログ検索:
+
+```bash
+aws logs filter-log-events \
+  --profile learning \
+  --region ap-northeast-1 \
+  --log-group-name /nobu-iac-lab/puma/stdout \
+  --filter-pattern "Started GET" \
+  --output table
+```
+
+確認できたログ:
+
+```text
+Started GET "/"
+Started GET "/login"
+Started GET "/users/new"
+```
+
+nginx accessログ検索:
+
+```bash
+aws logs filter-log-events \
+  --profile learning \
+  --region ap-northeast-1 \
+  --log-group-name /nobu-iac-lab/nginx/access \
+  --limit 10 \
+  --output table
+```
+
+確認できたログ:
+
+```text
+ELB-HealthChecker/2.0
+```
+
+## 学んだこと
+
+CloudWatch Agentを導入するだけではログは送信できず、EC2に付与されたIAM RoleへCloudWatch Logs送信用権限が必要になる。
+
+また、Log Groupのように複数EC2で共有するAWSリソースをAnsibleから操作する場合、全ホストで同時に実行すると競合することがある。
+
+共有リソースの作成や保持期間設定は `run_once: true` で1回だけ実行する方が安全である。
+
+## site.ymlでの一括実行確認
+
+CloudWatch Agent単体の動作確認後、日次再構築用の `site.yml` に `09_cloudwatch_agent.yml` を追加した。
+
+```yaml
+- import_playbook: 01_ping.yml
+- import_playbook: 04_nginx.yml
+- import_playbook: 08_sample_app_rails72.yml
+- import_playbook: 09_cloudwatch_agent.yml
+```
+
+`All_Setup.sh` でAWSリソースを作成した後、ローカル実行用スクリプトから `site.yml` を実行し、RailsアプリケーションとCloudWatch Agentをまとめて設定できることを確認した。
+
+確認コマンド:
+
+```bash
+curl -I https://www.nobu-iac-lab.com
+```
+
+確認結果:
+
+```text
+HTTP/2 200
+server: nginx/1.28.3
+strict-transport-security: max-age=63072000; includeSubDomains
+```
+
+CloudWatch Logs確認:
+
+```bash
+aws logs filter-log-events \
+  --profile learning \
+  --region ap-northeast-1 \
+  --log-group-name /nobu-iac-lab/puma/stdout \
+  --filter-pattern "Started GET" \
+  --output table
+```
+
+確認できたログ:
+
+```text
+Started GET "/"
+Started GET "/login"
+Started GET "/users/new"
+```
+
+これにより、`site.yml` だけでRailsアプリケーションの起動とCloudWatch Logs収集まで再現できることを確認した。

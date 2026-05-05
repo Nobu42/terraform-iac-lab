@@ -17,8 +17,16 @@ ROLE_DESCRIPTION="upload images"
 INSTANCE_PROFILE_NAME="$ROLE_NAME"
 
 # 学習用にAWS管理ポリシーを使う。
-# 実運用では対象バケットだけに絞った最小権限ポリシーにする。
-POLICY_ARN="arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#
+# S3:
+#   Rails Active Storageが投稿画像をS3へ保存するために利用する。
+#   実運用では対象バケットだけに絞った最小権限ポリシーにする。
+#
+# CloudWatch Agent:
+#   後続のCloudWatch編で、Web EC2上のnginx / Pumaログを
+#   CloudWatch Logsへ送信するために利用する。
+S3_POLICY_ARN="arn:aws:iam::aws:policy/AmazonS3FullAccess"
+CLOUDWATCH_AGENT_POLICY_ARN="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 
 # IAMロールを適用するWebサーバー。
 WEB01_NAME="sample-ec2-web01"
@@ -145,9 +153,19 @@ echo "=== Attach Policy to IAM Role ==="
 aws iam attach-role-policy \
   --profile "$PROFILE" \
   --role-name "$ROLE_NAME" \
-  --policy-arn "$POLICY_ARN"
+  --policy-arn "$S3_POLICY_ARN"
 
-echo "Policy attached: $POLICY_ARN"
+echo "Policy attached: $S3_POLICY_ARN"
+
+# CloudWatch AgentがCloudWatch Logsへログを送信できるようにする。
+# この権限がないと、AgentをインストールしてもLog Group / Log Stream作成や
+# PutLogEventsに失敗し、nginx / PumaログがCloudWatch Logsへ届かない。
+aws iam attach-role-policy \
+  --profile "$PROFILE" \
+  --role-name "$ROLE_NAME" \
+  --policy-arn "$CLOUDWATCH_AGENT_POLICY_ARN"
+
+echo "Policy attached: $CLOUDWATCH_AGENT_POLICY_ARN"
 
 echo "=== Create Instance Profile ==="
 
@@ -267,4 +285,3 @@ echo "Bucket: $BUCKET_NAME"
 echo "IAM Role: $ROLE_NAME"
 echo "Applied to: $WEB01_ID, $WEB02_ID"
 echo "------------------------------------------------"
-

@@ -315,6 +315,17 @@
         chdir: "{{ app_dir }}"
       become_user: "{{ deploy_user }}"
 
+    # Rails new直後の状態や、途中でPlaybookが失敗した再実行時には、
+    # db/migrate ディレクトリがまだ存在しない場合がある。
+    # migrationファイルをcopyする前に、配置先ディレクトリを明示的に作成しておく。
+    - name: Ensure Rails migration directory exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}/db/migrate"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_group }}"
+        mode: '0755'
+
     # Active Storageのテーブルを作るmigration。
     #
     # table_exists? で存在確認してから作成する。

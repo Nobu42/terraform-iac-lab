@@ -74,7 +74,8 @@ ELASTICACHE_SG_NAME="sample-sg-elasticache"
 BUCKET_NAME="nobu-terraform-iac-lab-upload"
 ROLE_NAME="sample-role-web"
 INSTANCE_PROFILE_NAME="sample-role-web"
-POLICY_ARN="arn:aws:iam::aws:policy/AmazonS3FullAccess"
+S3_POLICY_ARN="arn:aws:iam::aws:policy/AmazonS3FullAccess"
+CLOUDWATCH_AGENT_POLICY_ARN="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 
 # SES receiving
 # 受信用のReceipt RuleとS3 mailboxは、学習終了時に削除する。
@@ -723,10 +724,22 @@ fi
 echo "=== Delete IAM Role and Instance Profile for Web EC2 ==="
 # Web EC2用のIAM RoleとInstance Profileを削除する。
 # RoleにPolicyが付いたままだとRole削除に失敗するため、先にdetachする。
+#
+# S3:
+#   Rails Active Storageの画像保存用。
+#
+# CloudWatch Agent:
+#   nginx / PumaログをCloudWatch Logsへ送信するための権限。
+#   11_s3_setup.shで同じRoleに付与しているため、削除時も忘れずに外す。
 aws iam detach-role-policy \
   --profile "$PROFILE" \
   --role-name "$ROLE_NAME" \
-  --policy-arn "$POLICY_ARN" 2>/dev/null || echo "Policy already detached or role not found."
+  --policy-arn "$S3_POLICY_ARN" 2>/dev/null || echo "S3 policy already detached or role not found."
+
+aws iam detach-role-policy \
+  --profile "$PROFILE" \
+  --role-name "$ROLE_NAME" \
+  --policy-arn "$CLOUDWATCH_AGENT_POLICY_ARN" 2>/dev/null || echo "CloudWatch Agent policy already detached or role not found."
 
 aws iam remove-role-from-instance-profile \
   --profile "$PROFILE" \
@@ -758,4 +771,3 @@ echo "  - Re-run 15_acm_certificate_setup.sh to attach existing ACM certificate 
 echo "  - Re-run 18_ses_receiving_setup.sh if you want to receive inquiry mail again."
 echo "  - Check costs with check_cost.sh and check cleanup with check_cleanup.sh."
 echo "================================================"
-

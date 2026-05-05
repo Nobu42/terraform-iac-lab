@@ -143,14 +143,14 @@ Railsアプリでは、ユーザー登録、ログイン、投稿、画像アッ
 
 CloudWatch Logs、メトリクス、アラームを設定します。
 
-まずはEC2上のnginx / PumaログをCloudWatch Logsへ集約し、Railsアプリケーションの動作確認やトラブル調査に利用できる状態を目指します。
+EC2上のnginx / PumaログをCloudWatch Logsへ集約し、Railsアプリケーションの動作確認やトラブル調査に利用できる状態まで確認しました。
 
 その後、EC2、ALB、Target Group、RDS、ElastiCacheのメトリクス監視、アラーム、ダッシュボードへ拡張します。
 
 - [CloudWatch編 README](./03-cloudwatch/README.md)
 - [CloudWatch Logs設計メモ](./03-cloudwatch/notes/01_cloudwatch_logs_setup.md)
 
-収集予定ログ:
+収集確認済みログ:
 
 - `/var/log/nginx/access.log`
 - `/var/log/nginx/error.log`
