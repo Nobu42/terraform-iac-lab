@@ -18,6 +18,7 @@
 #
 # 実行例:
 #   export DB_MASTER_PASSWORD='RDS作成時に指定したパスワード'
+#   export SECRET_KEY_BASE='openssl rand -hex 64 で生成した値'
 #   ansible-playbook playbooks/08_sample_app_rails72.yml
 #
 # 注意:
@@ -53,6 +54,12 @@
     db_username: adminuser
     db_password: "{{ lookup('env', 'DB_MASTER_PASSWORD') }}"
 
+    # Rails productionでcookie署名やCSRF token検証に使う秘密鍵。
+    # ALB配下でweb01 / web02へ振り分けるため、全Webサーバーで同じ値にする必要がある。
+    # 各サーバーで別々に生成すると、GETをweb01、POSTをweb02が処理した場合に
+    # CSRF tokenを検証できず、ActionController::InvalidAuthenticityTokenになる。
+    secret_key_base: "{{ lookup('env', 'SECRET_KEY_BASE') }}"
+
     # Active StorageのS3保存先。
     # 11_s3_setup.shで作成する学習用アップロードバケットを利用する。
     # EC2にはS3アクセス用IAM Roleを付与している前提のため、アクセスキーは置かない。
@@ -77,6 +84,12 @@
       ansible.builtin.fail:
         msg: "DB_MASTER_PASSWORD is not set. Run: export DB_MASTER_PASSWORD='your-rds-master-password'"
       when: db_password | length == 0
+
+    - name: Require shared SECRET_KEY_BASE on Ansible controller
+      ansible.builtin.fail:
+        msg: "SECRET_KEY_BASE is not set. Run: export SECRET_KEY_BASE=$(openssl rand -hex 64)"
+      when: secret_key_base | length == 0
+      no_log: true
 
   tasks:
     # Railsアプリの作成とassets precompileに必要なパッケージを入れる。
@@ -275,6 +288,8 @@
         block: |
           config.hosts << "{{ app_host }}"
           config.hosts << "localhost"
+          config.assume_ssl = true
+          config.force_ssl = true
           config.active_storage.service = :amazon
           config.public_file_server.enabled = true
           if ENV["REDIS_URL"].present?
@@ -284,19 +299,78 @@
         group: "{{ deploy_group }}"
         mode: '0644'
 
-    # Active Storage用のマイグレーションを追加する。
-    # 既に追加済みなら何もしない。
-    - name: Install Active Storage migrations when missing
+    # Active Storage用のmigrationをAnsible管理にする。
+    #
+    # bin/rails active_storage:install は実行時刻ベースのmigrationファイルを生成する。
+    # web01 / web02 がそれぞれ別々に生成すると、同じRDSに対して別バージョンの
+    # Active Storage migrationが走り、既存テーブル作成で失敗することがある。
+    #
+    # そのため、自動生成されたActive Storage migrationを削除し、
+    # 固定ファイル名のmigrationをこのPlaybookから配布する。
+    - name: Remove generated Active Storage migrations
       ansible.builtin.shell: |
-        export RBENV_ROOT="{{ rbenv_root }}"
-        export PATH="$RBENV_ROOT/bin:$RBENV_ROOT/shims:$PATH"
-        if ! ls db/migrate/*create_active_storage_tables.active_storage.rb >/dev/null 2>&1; then
-          bin/rails active_storage:install
-        fi
+        rm -f db/migrate/*create_active_storage_tables.active_storage.rb
       args:
         executable: /bin/bash
         chdir: "{{ app_dir }}"
       become_user: "{{ deploy_user }}"
+
+    # Active Storageのテーブルを作るmigration。
+    #
+    # table_exists? で存在確認してから作成する。
+    # これにより、前回実行で既にactive_storage_blobsなどが作成済みでも、
+    # 再実行時に「Table already exists」で止まらない。
+    - name: Create deterministic Active Storage migration
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/db/migrate/20260505000050_create_active_storage_tables.rb"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_group }}"
+        mode: '0644'
+        content: |
+          class CreateActiveStorageTables < ActiveRecord::Migration[7.2]
+            def change
+              unless table_exists?(:active_storage_blobs)
+                create_table :active_storage_blobs do |t|
+                  t.string   :key,          null: false
+                  t.string   :filename,     null: false
+                  t.string   :content_type
+                  t.text     :metadata
+                  t.string   :service_name, null: false
+                  t.bigint   :byte_size,    null: false
+                  t.string   :checksum
+                  t.datetime :created_at,   null: false
+
+                  t.index [:key], unique: true
+                end
+              end
+
+              unless table_exists?(:active_storage_attachments)
+                create_table :active_storage_attachments do |t|
+                  t.string     :name,     null: false
+                  t.references :record,   null: false, polymorphic: true, index: false
+                  t.references :blob,     null: false
+                  t.datetime   :created_at, null: false
+
+                  t.index [:record_type, :record_id, :name, :blob_id],
+                    name: :index_active_storage_attachments_uniqueness,
+                    unique: true
+                  t.foreign_key :active_storage_blobs, column: :blob_id
+                end
+              end
+
+              unless table_exists?(:active_storage_variant_records)
+                create_table :active_storage_variant_records do |t|
+                  t.belongs_to :blob, null: false, index: false
+                  t.string :variation_digest, null: false
+
+                  t.index [:blob_id, :variation_digest],
+                    name: :index_active_storage_variant_records_uniqueness,
+                    unique: true
+                  t.foreign_key :active_storage_blobs, column: :blob_id
+                end
+              end
+            end
+          end
 
     # Userモデルを定義する。
     # 書籍サンプルアプリのように、名前、メールアドレス、パスワードでログインできる構成にする。
@@ -1023,20 +1097,13 @@
 
           plugin :tmp_restart
 
-    # secret_key_baseを初回だけ生成する。
-    # Rails productionではcookie署名などに必要で、固定値をGit管理してはいけない。
+    # systemd用の環境変数ファイルが存在するか確認する。
+    # secret_key_baseは全Webサーバーで同じ値を使う必要があるため、
+    # このPlaybookではMac側のSECRET_KEY_BASE環境変数から配布する。
     - name: Check application environment file
       ansible.builtin.stat:
         path: /etc/nobu-iac-lab.env
       register: app_env_file
-
-    - name: Generate secret_key_base when environment file is missing
-      ansible.builtin.command:
-        cmd: openssl rand -hex 64
-      register: generated_secret_key_base
-      changed_when: true
-      when: not app_env_file.stat.exists
-      no_log: true
 
     # systemdから読み込む環境変数ファイル。
     # no_logを付けて、Ansible出力にDBパスワードやsecret_key_baseを出さない。
@@ -1051,7 +1118,7 @@
           RAILS_ENV={{ rails_env }}
           RAILS_SERVE_STATIC_FILES=1
           RAILS_LOG_TO_STDOUT=1
-          SECRET_KEY_BASE={{ generated_secret_key_base.stdout | default('') }}
+          SECRET_KEY_BASE={{ secret_key_base }}
           DB_HOST={{ db_host }}
           DB_PORT={{ db_port }}
           DB_NAME={{ db_name }}
@@ -1094,6 +1161,19 @@
         path: /etc/nobu-iac-lab.env
         regexp: "^DB_PASSWORD="
         line: "DB_PASSWORD={{ db_password }}"
+        owner: root
+        group: "{{ deploy_group }}"
+        mode: '0640'
+      when: app_env_file.stat.exists
+      no_log: true
+
+    # SECRET_KEY_BASEも秘密情報なので、更新時はログに出さない。
+    # 既存環境ファイルがある場合でも、web01 / web02で同じ値に揃える。
+    - name: Update shared secret_key_base in application environment file
+      ansible.builtin.lineinfile:
+        path: /etc/nobu-iac-lab.env
+        regexp: "^SECRET_KEY_BASE="
+        line: "SECRET_KEY_BASE={{ secret_key_base }}"
         owner: root
         group: "{{ deploy_group }}"
         mode: '0640'

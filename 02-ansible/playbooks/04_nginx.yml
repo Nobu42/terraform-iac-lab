@@ -30,6 +30,11 @@
         group: root
         mode: '0644'
         content: |
+          map $http_x_forwarded_proto $rails_x_forwarded_proto {
+              default $http_x_forwarded_proto;
+              "" $scheme;
+          }
+
           upstream puma {
               server unix:///var/www/nobu-iac-lab/tmp/sockets/puma.sock;
           }
@@ -38,6 +43,10 @@
               listen 3000 default_server;
               listen [::]:3000 default_server;
               server_name _;
+
+              # 画像付き投稿ではmultipart/form-dataでファイルを送る。
+              # nginxのデフォルト上限は小さいため、Rails側の画像制限5MBより少し大きい10MBまで許可する。
+              client_max_body_size 10m;
 
               root /var/www/nobu-iac-lab/public;
 
@@ -51,7 +60,7 @@
                   proxy_redirect off;
 
                   proxy_set_header Host $host;
-                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_set_header X-Forwarded-Proto $rails_x_forwarded_proto;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header X-Real-IP $remote_addr;
 
@@ -72,4 +81,3 @@
       ansible.builtin.systemd:
         name: nginx
         enabled: true
-
