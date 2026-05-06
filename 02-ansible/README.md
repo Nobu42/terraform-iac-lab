@@ -56,6 +56,8 @@ web01 / web02
 ├── group_vars/
 ├── inventory/
 │   └── hosts.ini
+├── notes/
+│   └── 00_ansible_reference.md
 └── playbooks/
     ├── 01_ping.yml
     ├── 02_packages.yml
@@ -68,6 +70,12 @@ web01 / web02
     ├── site.yml
     └── site_full.yml
 ```
+
+## Notes
+
+Ansibleの基本文法、Inventory、よく使うモジュール、実行コマンド、冪等性、トラブル対応は以下に整理しています。
+
+- [Ansible Reference](./notes/00_ansible_reference.md)
 
 ## Inventory
 
