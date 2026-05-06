@@ -2,16 +2,16 @@
 
 このディレクトリでは、AWS CLIとAnsibleで構築したRailsアプリケーション環境に対して、CloudWatchによるログ収集と監視を追加します。
 
-まずはEC2上のnginx / PumaログをCloudWatch Logsへ集約し、アプリケーションの動作確認やトラブル調査に利用できる状態を目指します。
+まずはEC2上のnginx / PumaログをCloudWatch Logsへ集約し、アプリケーションの動作確認やトラブル調査に利用できる状態を作ります。
 
-現在、CloudWatch Agentによるnginx / Pumaログの収集まで確認済みです。
+現在、CloudWatch Agentによるnginx / Pumaログ収集、主要メトリクスのCloudWatch Alarm作成、CloudWatch Dashboard作成まで確認済みです。
 
 ## 目的
 
 - EC2上のログをCloudWatch Logsへ集約する
 - web01 / web02 のログを同じ場所で確認できるようにする
 - nginx / Puma / Railsのトラブルをログから追跡できるようにする
-- 後続でメトリクス、アラーム、ダッシュボードへ拡張する
+- メトリクス、アラーム、ダッシュボードを作成する
 - 運用保守で確認すべき項目を整理する
 
 ## 対象構成
@@ -133,6 +133,28 @@ nginx access logでは、ALB Health Checkのアクセスログを確認しまし
 ELB-HealthChecker/2.0
 ```
 
+CloudWatch Alarmは以下を確認済みです。
+
+```text
+nobu-iac-lab-ec2-<instance-id>-cpu-high
+nobu-iac-lab-ec2-<instance-id>-status-check-failed
+nobu-iac-lab-alb-5xx-high
+nobu-iac-lab-targetgroup-healthy-host-low
+nobu-iac-lab-rds-cpu-high
+nobu-iac-lab-rds-free-storage-low
+nobu-iac-lab-rds-database-connections-high
+nobu-iac-lab-elasticache-cpu-high
+nobu-iac-lab-elasticache-curr-connections-high
+```
+
+CloudWatch Dashboardは以下を確認済みです。
+
+```text
+nobu-iac-lab-dashboard
+```
+
+Dashboardには、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスを配置しています。
+
 ## 確認観点
 
 CloudWatch Logs設定後、以下を確認します。
@@ -179,6 +201,25 @@ aws logs filter-log-events \
   --filter-pattern "InvalidAuthenticityToken" \
   --output table
 ```
+
+Alarm一覧:
+
+```bash
+aws cloudwatch describe-alarms \
+  --profile learning \
+  --region ap-northeast-1 \
+  --alarm-name-prefix nobu-iac-lab \
+  --output table
+```
+
+Dashboard確認:
+
+```bash
+aws cloudwatch get-dashboard \
+  --profile learning \
+  --region ap-northeast-1 \
+  --dashboard-name nobu-iac-lab-dashboard
+```
 ## 現在の到達点
 
 - CloudWatch Agentをweb01 / web02へ導入
@@ -186,18 +227,17 @@ aws logs filter-log-events \
 - Puma stdout/stderr logをCloudWatch Logsへ送信
 - Log Group保持期間を7日に設定
 - site.ymlへCloudWatch Agent設定を追加
-
-## 次に追加する監視
-
-- EC2 CPU / StatusCheck
-- ALB Target Group HealthyHostCount / 5xx
-- RDS CPU / FreeStorageSpace / DatabaseConnections
+- EC2 CPU / StatusCheckのAlarmを作成
+- ALB 5xx / Target Group HealthyHostCountのAlarmを作成
+- RDS CPU / FreeStorageSpace / DatabaseConnectionsのAlarmを作成
+- ElastiCache CPU / CurrConnectionsのAlarmを作成
+- CloudWatch Dashboardを作成
 
 ## 今後の拡張
 
-- ElastiCache監視
-- CloudWatch Alarm
-- CloudWatch Dashboard
+- SNS Topicとメール通知の追加
+- CloudWatch Logs Metric Filterの追加
+- CloudWatch Dashboardの表示項目調整
+- cleanup_all.shへのCloudWatch Alarm / Dashboard削除処理追加検討
 - 運用確認手順の整理
-
 

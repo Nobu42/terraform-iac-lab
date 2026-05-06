@@ -154,7 +154,7 @@ CloudWatch Logs設定後、以下を行う。
 6. CloudWatch LogsでPuma stdout logを確認する
 7. `web01` / `web02` のどちらで処理されたか確認する
 
-## 今後の拡張
+## 当初の拡張予定
 
 - ログ保持期間を設定する
 - 5xxエラーをMetric Filter化する
@@ -363,3 +363,60 @@ Started GET "/users/new"
 ```
 
 これにより、`site.yml` だけでRailsアプリケーションの起動とCloudWatch Logs収集まで再現できることを確認した。
+
+## 後続のAlarm / Dashboard作成確認
+
+CloudWatch Logs収集確認後、主要メトリクスのAlarmとDashboardもAWS CLIスクリプトで作成した。
+
+作成スクリプト:
+
+```text
+03-cloudwatch/scripts/01_create_alarms.sh
+03-cloudwatch/scripts/02_create_dashboard.sh
+```
+
+Alarm作成では、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスを対象にした。
+
+確認できたAlarm:
+
+```text
+nobu-iac-lab-alb-5xx-high
+nobu-iac-lab-ec2-<instance-id>-cpu-high
+nobu-iac-lab-ec2-<instance-id>-status-check-failed
+nobu-iac-lab-elasticache-cpu-high
+nobu-iac-lab-elasticache-curr-connections-high
+nobu-iac-lab-rds-cpu-high
+nobu-iac-lab-rds-database-connections-high
+nobu-iac-lab-rds-free-storage-low
+nobu-iac-lab-targetgroup-healthy-host-low
+```
+
+作成直後のAlarmは、メトリクス評価に必要なデータがまだ揃っていないため `INSUFFICIENT_DATA` になることがある。
+
+Dashboard作成では、以下のDashboardを作成した。
+
+```text
+nobu-iac-lab-dashboard
+```
+
+`put-dashboard` の実行結果で `DashboardValidationMessages` が空配列になり、Dashboard Body JSONに検証エラーがないことを確認した。
+
+```json
+{
+  "DashboardValidationMessages": []
+}
+```
+
+Dashboardには、以下のメトリクスを配置した。
+
+- EC2 CPUUtilization
+- EC2 StatusCheckFailed
+- ALB RequestCount
+- ALB 5xx
+- Target Group HealthyHostCount / UnHealthyHostCount
+- ALB TargetResponseTime
+- RDS CPUUtilization
+- RDS FreeStorageSpace
+- RDS DatabaseConnections
+- ElastiCache CPUUtilization
+- ElastiCache CurrConnections

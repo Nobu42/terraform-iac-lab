@@ -141,14 +141,15 @@ Railsアプリでは、ユーザー登録、ログイン、投稿、画像アッ
 
 ## 03 CloudWatch
 
-CloudWatch Logs、メトリクス、アラームを設定します。
+CloudWatch Logs、メトリクス、アラーム、ダッシュボードを設定します。
 
 EC2上のnginx / PumaログをCloudWatch Logsへ集約し、Railsアプリケーションの動作確認やトラブル調査に利用できる状態まで確認しました。
 
-その後、EC2、ALB、Target Group、RDS、ElastiCacheのメトリクス監視、アラーム、ダッシュボードへ拡張します。
+また、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスに対するCloudWatch Alarmを作成し、運用確認用のCloudWatch Dashboardも作成しました。
 
 - [CloudWatch編 README](./03-cloudwatch/README.md)
 - [CloudWatch Logs設計メモ](./03-cloudwatch/notes/01_cloudwatch_logs_setup.md)
+- [CloudWatch Dashboard設計メモ](./03-cloudwatch/notes/02_cloudwatch_dashboard_setup.md)
 
 収集確認済みログ:
 
@@ -156,6 +157,15 @@ EC2上のnginx / PumaログをCloudWatch Logsへ集約し、Railsアプリケー
 - `/var/log/nginx/error.log`
 - `/var/www/nobu-iac-lab/log/puma.stdout.log`
 - `/var/www/nobu-iac-lab/log/puma.stderr.log`
+
+監視確認済み項目:
+
+- EC2 CPU / StatusCheck
+- ALB 5xx
+- Target Group HealthyHostCount
+- RDS CPU / FreeStorageSpace / DatabaseConnections
+- ElastiCache CPU / CurrConnections
+- CloudWatch Dashboard `nobu-iac-lab-dashboard`
 
 ## 04 Terraform
 
