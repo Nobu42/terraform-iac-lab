@@ -1024,30 +1024,30 @@ web02 : ok=50 changed=9 failed=0 skipped=5
 
 冪等性が高いPlaybookでは、2回目以降の `changed` が少なくなります。
 
-## 面接での説明例
+## この構成での実装要点
 
-Ansibleの役割:
+### Ansibleの役割
 
 ```text
 AWS CLIで作成したPrivate Subnet上のWeb EC2に対して、Ansibleでnginx、Puma、Ruby、Railsアプリケーション、CloudWatch Agentを構成しました。
 Bastion経由でweb01 / web02へ接続し、同じ設定を2台に反映しています。
 ```
 
-冪等性:
+### 冪等性
 
 ```text
 Ansibleでは、パッケージ導入やディレクトリ作成をstateで管理し、同じPlaybookを再実行しても同じ状態に収束するように意識しました。
 確認系Taskにはchanged_when: falseを使い、共有リソース操作にはrun_onceを使っています。
 ```
 
-トラブル対応:
+### トラブル対応
 
 ```text
 RailsのCSRFエラーでは、ALB配下の2台構成でSECRET_KEY_BASEが一致していないことが原因でした。
 Ansibleで同じSECRET_KEY_BASEをweb01 / web02へ配布するように修正し、ログインできる状態にしました。
 ```
 
-CloudWatch連携:
+### CloudWatch連携
 
 ```text
 AnsibleでCloudWatch Agentを導入し、nginxとPumaのログをCloudWatch Logsへ送信しました。
