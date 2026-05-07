@@ -263,7 +263,21 @@ AWS CLIで作成した構成をTerraformで再現します。
 手作業に近い構築手順を、再実行しやすいコードへ置き換えることを目的とします。
 VPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheを順番にTerraform化します。
 
-> 作成予定
+現在はTerraform化計画を作成し、まずはVPC、Public / Private Subnet、Internet Gateway、Public Route Tableから段階的に進める方針です。
+
+- [Terraform編 README](./04-terraform/README.md)
+- [Terraform化計画](./04-terraform/notes/00_terraform_plan.md)
+
+最初のTerraform化対象:
+
+- VPC
+- Public Subnet x2
+- Private Subnet x2
+- Internet Gateway
+- Public Route Table
+- Public Route Table Association
+
+NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは、Terraformの基本操作を確認してから追加します。
 
 ## 05 Auto Scaling
 
