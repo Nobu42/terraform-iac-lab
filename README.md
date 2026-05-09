@@ -7,127 +7,156 @@
 ![Docker](https://img.shields.io/badge/Docker-%232496ED.svg?style=for-the-badge&logo=docker&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-%23326CE5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 
-AWS上にWebアプリケーション基盤を構築し、構築手順、依存関係、運用、削除までを確認するための学習用リポジトリです。
+AWS上にWebアプリケーション基盤を構築し、構築手順、依存関係、運用、監視、削除までを確認するための学習用リポジトリです。
 
-まずAWS CLIとシェルスクリプトで、VPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheを順番に構築します。
-その後、EC2上へのRailsアプリケーションデプロイ、CloudWatchによる監視、Terraform化、Auto Scaling、ECS/Fargate、CI/CDへ広げていく予定です。
+AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsibleでRailsアプリケーションをデプロイし、CloudWatchでログ収集・監視を追加します。現在は、同じ構成をTerraformへ段階的に移行しています。
 
-## 参考資料と本リポジトリの位置づけ
-
-本リポジトリのAWS基本構成は、以下の書籍を参考にしています。
-
-- 書籍名: `AWSではじめるインフラ構築入門 第2版`
-- 著者: `中垣 健志`
-- 出版社: `株式会社 翔泳社`
-- ISBN: `978-4-7981-8016-8`
-
-参考書籍では、AWSマネジメントコンソールを使って、VPC、Subnet、EC2、ALB、RDSなどをGUI操作で構築しています。
-
-本リポジトリでは、その構成を題材として、GUI操作ではなくAWS CLIとShell Scriptで再構成しました。
-各リソースの作成順序、依存関係、削除順序を理解するために、構築スクリプト、確認スクリプト、削除スクリプト、コスト確認スクリプトを作成しています。
-
-さらに、Amazon Linux 2023での差分対応、Route 53 Public / Private DNS、ACM、SES、ElastiCache、AnsibleによるRailsデプロイ、Terraform化、CloudWatch監視、Auto Scaling、ECS/Fargate、CI/CDへ学習範囲を広げていく予定です。
-
-そのため、本リポジトリは書籍内容の単純な写経ではなく、GUIベースの構築手順をコード化し、運用と自動化の観点を加えて再構成した学習用ポートフォリオです。
+詳細な学習方針、参考資料、扱っている構成一覧は [Project Overview](./docs/Project_Overview.md) を参照してください。
 
 ## Network Architecture
 
-このラボの論理構成図です。詳細なパラメータ設定については[設計仕様書](./docs/Design_Specification.md)を参照してください。
+このラボの論理構成図です。詳細なパラメータ設定については [設計仕様書](./docs/Design_Specification.md) を参照してください。
 
 ![Network Architecture](./docs/Network_Architecture.png?v=4)
 
-## 学習方針
+## Repository Structure
 
-このリポジトリでは、いきなりTerraformから始めず、まずAWS CLIで各リソースの作成順序と依存関係を確認します。
+| Directory | 内容 |
+| :--- | :--- |
+| [`01-aws-cli`](./01-aws-cli/README.md) | AWS CLIとShell Scriptによるインフラ構築 |
+| [`02-ansible`](./02-ansible/README.md) | EC2内部設定、Rails 7.2アプリケーションデプロイ |
+| [`03-cloudwatch`](./03-cloudwatch/README.md) | CloudWatch Logs、Alarm、Dashboard |
+| [`04-terraform`](./04-terraform/README.md) | AWS CLIで作成した構成のTerraform化 |
+| [`docs`](./docs) | 設計書、運用設計、トラブルシューティング、構成図 |
+| [`dotfiles`](./dotfiles) | 作業環境用dotfiles |
 
-1. AWS CLIでリソースの作成手順を確認する
-2. Shell Scriptで構築手順を整理する
-3. AnsibleでEC2内部の設定とRailsアプリケーションのデプロイを行う
-4. CloudWatch Logs、メトリクス、アラームを設定する
-5. Terraformで同じ構成をコード化する
-6. Auto Scaling Groupを追加する
-7. ECS/FargateでWebアプリケーションを動かす
-8. CodePipelineまたはGitHub Actionsでデプロイ手順を作る
+## 01 AWS CLI
 
-## 現在扱っている構成
+AWS CLIで各AWSリソースを順番に作成し、ネットワーク、サーバー、ロードバランサー、データベース、ストレージ、DNS、証明書、メール、キャッシュの構成を確認します。
+
+主な内容:
+
+- VPC / Subnet / Internet Gateway / NAT Gateway
+- Route Table / Security Group
+- Bastion EC2 / Web EC2
+- ALB / Target Group / Listener
+- RDS for MySQL
+- S3 / IAM Role
+- Route 53 Public DNS / Private DNS
+- ACM / SES / ElastiCache
+- 構築確認、削除、コスト確認
+
+Links:
+
+- [AWS CLI編 README](./01-aws-cli/README.md)
+- [初期設定](./01-aws-cli/notes/00_aws_cli_initial_setup.md)
+- [解説メモ](./01-aws-cli/notes)
+- [シェルスクリプト](./01-aws-cli/scripts)
+
+## 02 Ansible
+
+Ansibleを使って、Private Subnet上のWeb EC2へRails 7.2アプリケーションをデプロイします。
+
+Macから踏み台サーバー経由で `web01` / `web02` に接続し、nginx、Puma、Ruby、Rails、CloudWatch Agentなどを構成します。
+
+確認済み項目:
+
+- Bastion経由のAnsible接続
+- Ruby 3.3.6 / Rails 7.2.3
+- nginx + Puma + systemd
+- ALB + ACM + Route 53によるHTTPS公開
+- RDS MySQL接続
+- Active StorageによるS3画像保存
+- web01 / web02 2台構成での `SECRET_KEY_BASE` 共有
+- AnsibleまとめPlaybook `site.yml`
+
+Links:
+
+- [Ansible編 README](./02-ansible/README.md)
+- [Inventory](./02-ansible/inventory/hosts.ini)
+- [Playbooks](./02-ansible/playbooks)
+- [Ansible Reference](./02-ansible/notes/00_ansible_reference.md)
+
+## 03 CloudWatch
+
+CloudWatch Logs、メトリクス、アラーム、ダッシュボードを設定します。
+
+CloudWatch Agentでnginx / PumaログをCloudWatch Logsへ集約し、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスに対してAlarmとDashboardを作成しました。
+
+確認済み項目:
+
+- nginx access/error log収集
+- Puma stdout/stderr log収集
+- Log Group保持期間7日
+- EC2 CPU / StatusCheck Alarm
+- ALB 5xx Alarm
+- Target Group HealthyHostCount Alarm
+- RDS CPU / FreeStorageSpace / DatabaseConnections Alarm
+- ElastiCache CPU / CurrConnections Alarm
+- CloudWatch Dashboard `nobu-iac-lab-dashboard`
+
+Links:
+
+- [CloudWatch編 README](./03-cloudwatch/README.md)
+- [CloudWatch AWS CLI Reference](./03-cloudwatch/notes/00_cloudwatch_aws_cli_reference.md)
+- [CloudWatch Logs設計メモ](./03-cloudwatch/notes/01_cloudwatch_logs_setup.md)
+- [CloudWatch Dashboard設計メモ](./03-cloudwatch/notes/02_cloudwatch_dashboard_setup.md)
+- [CloudWatch scripts](./03-cloudwatch/scripts)
+
+## 04 Terraform
+
+AWS CLIで作成した構成をTerraformで再現します。
+
+現在はTerraform化計画を作成し、まずはVPC、Public / Private Subnet、Internet Gateway、Public Route Tableから段階的に進めています。
+
+最初のTerraform化対象:
 
 - VPC
-- Public Subnet / Private Subnet
+- Public Subnet x2
+- Private Subnet x2
 - Internet Gateway
-- NAT Gateway
-- Route Table
-- Security Group
-- Bastion EC2
-- Web EC2
-- Application Load Balancer
-- Target Group / Listener
-- RDS for MySQL
-- S3
-- IAM Role / Instance Profile
-- Route 53 Public Hosted Zone
-- Route 53 Private Hosted Zone
-- ACM Certificate
-- SES Domain Identity
-- SES SMTP送信
-- SESメール受信
-- ElastiCache for Redis
-- AnsibleによるRails 7.2アプリケーションデプロイ
-- Puma / nginx / systemd
-- Rails Active StorageによるS3画像保存
-- CloudWatch Logs設計
-- 削除スクリプト
-- 構築確認スクリプト
-- コスト確認スクリプト
+- Public Route Table
+- Public Route Table Association
 
-## このリポジトリで確認すること
+確認済み項目:
 
-- AWS CLIでリソースを作成する順序
-- VPC、Subnet、Route Table、Security Groupの関係
-- Public SubnetとPrivate Subnetの使い分け
-- 踏み台サーバー経由のSSH接続
-- ALBからPrivate Subnet上のWebサーバーへ通信する構成
-- RDSをPrivate Subnetから利用する構成
-- S3をEC2のIAM Roleから利用する構成
-- Route 53でPublic DNS / Private DNSを管理する構成
-- ACM証明書を使ったHTTPS化
-- SESによるメール送信とメール受信
-- ElastiCache for RedisをPrivate Subnetで利用する構成
-- Rails 7.2アプリケーションをPrivate Subnet上のWeb EC2へデプロイする構成
-- ALB + ACM + Route 53でRailsアプリをHTTPS公開する構成
-- Railsの投稿画像をActive Storage経由でS3へ保存する構成
-- CloudWatch Logsでnginx / Pumaログを収集する構成
-- タグ、コスト確認、構築確認、削除手順を含めた基本的な運用
-- Terraform化する際に必要になるリソース間の依存関係
-- 構築中に発生したエラーの原因調査と再発防止
+- `terraform init`
+- `terraform fmt`
+- `terraform validate`
+- `terraform plan`
+- `terraform apply`
+- `terraform destroy`
+- VPC / Subnet / Internet Gateway / Public Route Tableの作成と削除
 
-## 日次起動・削除手順
+Links:
 
-このリポジトリでは、学習コストを抑えるため、必要なときにAWSリソースを作成し、作業終了後に削除する運用にしています。
+- [Terraform編 README](./04-terraform/README.md)
+- [Terraform化計画](./04-terraform/notes/00_terraform_plan.md)
+- [VPC Terraform化メモ](./04-terraform/notes/01_vpc.md)
 
-### 起動手順
+## Daily Operation
 
-AWSリソースはAWS CLIスクリプトで作成します。
+学習コストを抑えるため、必要なときにAWSリソースを作成し、作業終了後に削除します。
+
+### Startup
+
+AWSリソースを作成します。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/01-aws-cli/scripts
 ./All_Setup.sh
 ```
 
-`All_Setup.sh` 実行後、AnsibleでWeb EC2内部の設定、Railsアプリケーションのデプロイ、CloudWatch Agent設定を行います。
+AnsibleでRailsアプリケーションとCloudWatch Agentを構成します。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/02-ansible
+export DB_MASTER_PASSWORD='RDS作成時のパスワード'
+export SECRET_KEY_BASE=$(openssl rand -hex 64)
 ansible-playbook playbooks/site.yml
 ```
 
-ローカルでDBパスワードや `SECRET_KEY_BASE` を環境変数に設定する場合は、Git管理しないローカル実行用スクリプトから `site.yml` を実行します。
-
-```bash
-cd /Users/nobu/terraform-iac-lab/02-ansible
-./run_site_local.sh
-```
-
-CloudWatch AlarmとDashboardはCloudWatch用スクリプトで作成します。
+CloudWatch AlarmとDashboardを作成します。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/03-cloudwatch/scripts
@@ -135,7 +164,7 @@ cd /Users/nobu/terraform-iac-lab/03-cloudwatch/scripts
 ./02_create_dashboard.sh
 ```
 
-起動後の主な確認:
+主な確認:
 
 ```bash
 curl -I https://www.nobu-iac-lab.com
@@ -149,156 +178,47 @@ aws cloudwatch describe-alarms \
   --output table
 ```
 
-```bash
-aws cloudwatch get-dashboard \
-  --profile learning \
-  --region ap-northeast-1 \
-  --dashboard-name nobu-iac-lab-dashboard
-```
+### Cleanup
 
-### 削除手順
-
-CloudWatch AlarmとDashboardは、EC2やALBを削除しても自動では削除されません。
-
-そのため、AWSリソース本体を削除する前にCloudWatch用cleanupを実行します。
+CloudWatch AlarmとDashboardを削除します。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/03-cloudwatch/scripts
 ./03_cleanup_cloudwatch.sh
 ```
 
-通常、CloudWatch LogsのLog Groupは保持期間7日で残します。Log Groupも含めて完全に削除したい場合だけ、以下を実行します。
+Log Groupも含めて完全に削除する場合:
 
 ```bash
 DELETE_LOG_GROUPS=true ./03_cleanup_cloudwatch.sh
 ```
 
-AWSリソース本体は `cleanup_all.sh` で削除します。
+AWSリソース本体を削除し、残存確認とコスト確認を行います。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/01-aws-cli/scripts
 ./cleanup_all.sh
-```
-
-削除後は、削除確認とコスト確認を行います。
-
-```bash
 ./check_cleanup.sh
 ./check_cost.sh
 ```
 
 `cleanup_all.sh` では、ドメイン登録、Public Hosted Zone、ACM証明書、SES Domain Identity、DKIM/SPF/DMARC、SES SMTP IAM userなど、継続利用するリソースは残します。
 
-## 01 AWS CLI
+## Documents
 
-AWS CLIで各AWSリソースを順番に作成し、ネットワーク、サーバー、ロードバランサー、データベース、ストレージ、DNS、証明書、メール、キャッシュの構成を確認します。
+- [Project Overview](./docs/Project_Overview.md)
+- [Design Specification](./docs/Design_Specification.md)
+- [Operation Design](./docs/Operation_Design.md)
+- [Troubleshooting](./docs/Troubleshooting.md)
+- [AWS Commands](./docs/aws_commands.md)
+- [Terraform Commands](./docs/terraform_commands.md)
+- [SSH config example](./docs/ssh_config.example)
 
-- [AWS CLI編 README](./01-aws-cli/README.md)
-- [初期設定](./01-aws-cli/notes/00_aws_cli_initial_setup.md)
-- [解説メモ](./01-aws-cli/notes)
-- [シェルスクリプト](./01-aws-cli/scripts)
-- [設計仕様書](./docs/Design_Specification.md)
-- [保守運用計画書](./docs/Operation_Design.md)
-- [トラブルシューティング](./docs/Troubleshooting.md)
+## Roadmap
 
-## 02 Ansible
-
-Ansibleを使って、EC2内部のパッケージ導入、設定ファイル配置、Railsアプリケーションのデプロイを管理します。
-
-MacからAnsibleを実行し、踏み台サーバー経由でPrivate Subnet上のWebサーバー `web01` / `web02` に接続します。
-
-現在はRuby 3.3.6 / Rails 7.2.3 / Puma / nginx / systemdによるRailsアプリケーションのデプロイまで確認済みです。
-
-Railsアプリでは、ユーザー登録、ログイン、投稿、画像アップロードを実装し、投稿本文はRDS MySQL、投稿画像はActive Storage経由でS3へ保存します。
-
-また、日次再構築時間を短縮するため、Ruby導入済みのWebベースAMIを作成し、Web EC2作成時に利用できるようにしました。
-
-- [Ansible編 README](./02-ansible/README.md)
-- [Inventory](./02-ansible/inventory/hosts.ini)
-- [Playbooks](./02-ansible/playbooks)
-
-主な確認済み項目:
-
-- Bastion経由のAnsible接続
-- Ruby 3.3.6 / Rails 7.2.3
-- nginx + Puma + systemd
-- ALB + ACM + Route 53によるHTTPS公開
-- RDS MySQL接続
-- Active StorageによるS3画像保存
-- web01 / web02 2台構成での `SECRET_KEY_BASE` 共有
-- AnsibleまとめPlaybook `site.yml`
-
-## 03 CloudWatch
-
-CloudWatch Logs、メトリクス、アラーム、ダッシュボードを設定します。
-
-EC2上のnginx / PumaログをCloudWatch Logsへ集約し、Railsアプリケーションの動作確認やトラブル調査に利用できる状態まで確認しました。
-
-また、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスに対するCloudWatch Alarmを作成し、運用確認用のCloudWatch Dashboardも作成しました。
-
-- [CloudWatch編 README](./03-cloudwatch/README.md)
-- [CloudWatch Logs設計メモ](./03-cloudwatch/notes/01_cloudwatch_logs_setup.md)
-- [CloudWatch Dashboard設計メモ](./03-cloudwatch/notes/02_cloudwatch_dashboard_setup.md)
-
-収集確認済みログ:
-
-- `/var/log/nginx/access.log`
-- `/var/log/nginx/error.log`
-- `/var/www/nobu-iac-lab/log/puma.stdout.log`
-- `/var/www/nobu-iac-lab/log/puma.stderr.log`
-
-監視確認済み項目:
-
-- EC2 CPU / StatusCheck
-- ALB 5xx
-- Target Group HealthyHostCount
-- RDS CPU / FreeStorageSpace / DatabaseConnections
-- ElastiCache CPU / CurrConnections
-- CloudWatch Dashboard `nobu-iac-lab-dashboard`
-
-## 04 Terraform
-
-AWS CLIで作成した構成をTerraformで再現します。
-
-手作業に近い構築手順を、再実行しやすいコードへ置き換えることを目的とします。
-VPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheを順番にTerraform化します。
-
-現在はTerraform化計画を作成し、まずはVPC、Public / Private Subnet、Internet Gateway、Public Route Tableから段階的に進める方針です。
-
-- [Terraform編 README](./04-terraform/README.md)
-- [Terraform化計画](./04-terraform/notes/00_terraform_plan.md)
-
-最初のTerraform化対象:
-
-- VPC
-- Public Subnet x2
-- Private Subnet x2
-- Internet Gateway
-- Public Route Table
-- Public Route Table Association
-
-NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは、Terraformの基本操作を確認してから追加します。
-
-## 05 Auto Scaling
-
-現在のWeb EC2構成をもとに、Launch TemplateとAuto Scaling Groupを追加します。
-
-ALBのTarget GroupへAuto Scaling Groupを関連付け、Private Subnet上のWebサーバーを自動的に増減できる構成を確認します。
-
-> 作成予定
-
-## 06 ECS / Fargate
-
-WebアプリケーションをDocker化し、ECS/Fargate上で動かします。
-
-ECR、ECS Cluster、Task Definition、Service、ALB連携を扱う予定です。
-
-> 作成予定
-
-## 07 CI/CD
-
-CodePipeline、CodeBuild、CodeDeploy、またはGitHub Actionsを使ってデプロイ手順を作成します。
-
-アプリケーションの変更を安全に反映する流れを確認します。
-
-> 作成予定
+- Terraform化の継続
+- Backup設計とリストアテスト
+- 構築後テスト設計
+- Auto Scaling Group
+- ECS / Fargate
+- CI/CD
