@@ -133,6 +133,7 @@ Links:
 - [Terraform編 README](./04-terraform/README.md)
 - [Terraform化計画](./04-terraform/notes/00_terraform_plan.md)
 - [VPC Terraform化メモ](./04-terraform/notes/01_vpc.md)
+- [NAT Gateway Terraform化メモ](./04-terraform/notes/02_nat_gateway.md)
 
 ## Daily Operation
 
