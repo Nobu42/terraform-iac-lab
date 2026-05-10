@@ -134,6 +134,8 @@ Links:
 - [Terraform化計画](./04-terraform/notes/00_terraform_plan.md)
 - [VPC Terraform化メモ](./04-terraform/notes/01_vpc.md)
 - [NAT Gateway Terraform化メモ](./04-terraform/notes/02_nat_gateway.md)
+- [Security Group Terraform化メモ](./04-terraform/notes/03_security_group.md)
+- [EC2準備メモ](./04-terraform/notes/04_ec2.md)
 
 ## Daily Operation
 

@@ -28,6 +28,8 @@ Public Route Table Association
 
 現在は、NAT GatewayとPrivate Route Tableまで追加し、Private Subnetからインターネット方向へ出る経路をTerraformで表現しています。
 
+Security GroupとEC2 Key Pair、Amazon Linux 2023 AMI取得まで進めています。
+
 ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら追加します。
 
 ## フォルダ構成
@@ -68,6 +70,8 @@ Terraform化の全体計画は以下に整理しています。
 - [Terraform化計画](./notes/00_terraform_plan.md)
 - [VPC / Subnet / Internet Gateway / Public Route Table](./notes/01_vpc.md)
 - [NAT Gateway / Private Route Table](./notes/02_nat_gateway.md)
+- [Security Group](./notes/03_security_group.md)
+- [EC2 Preparation](./notes/04_ec2.md)
 
 ## 初回作成ファイル
 

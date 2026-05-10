@@ -54,4 +54,31 @@ variable "availability_zone_1c" {
   default     = "ap-northeast-1c"
 }
 
+variable "admin_ip_cidr" {
+  description = "CIDR block allowed to SSH to the vastion host. Example: x.x.x.x/32"
+  type        = string
+}
 
+variable "key_pair_name" {
+  description = "EC2 key pair name used for SSH."
+  type        = string
+  default     = "nobu"
+}
+
+variable "public_key_path" {
+  description = "Path to the public key file registered as EC2 key pair."
+  type        = string
+  default     = "~/.ssh/id_ed25519.pub"
+}
+
+variable "use_custom_web_ami" {
+  description = "Whether to use custom AMI for web servers."
+  type        = bool
+  default     = false
+}
+
+variable "custom_web_ami_id" {
+  description = "Custom AMI ID for web servers. Used when use_custom_web_ami is true."
+  type        = string
+  default     = ""
+}
