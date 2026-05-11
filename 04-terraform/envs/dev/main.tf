@@ -455,3 +455,178 @@ data "aws_ami" "amazon_linux_2023" {
 locals {
   web_ami_id = var.use_custom_web_ami ? var.custom_web_ami_id : data.aws_ami.amazon_linux_2023.id
 }
+
+# Web EC2用IAM Role.
+# EC2がS3やCloudWatch Logsへアクセスするために利用する。
+resource "aws_iam_role" "web" {
+  name = "sample-role-web"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = merge(local.common_tags, {
+    Name = "sample-role-web"
+  })
+}
+
+# Web EC2用Instance Profile.
+# EC2にIAM Roleを付与するための入れ物。
+# aws_instanceではIAM Role名ではなくInstance Profile名を指定する。
+resource "aws_iam_instance_profile" "web" {
+  name = "sample-instance-profile-web"
+  role = aws_iam_role.web.name
+
+  tags = merge(local.common_tags, {
+    Name = "sample-instance-profile-web"
+  })
+}
+
+# Web EC2にS3アクセス権限を付与する。
+# Rails Active StorageでS3へ画像を保存するために利用する。
+# 学習環境ではAWS管理ポリシー AmazonS3FullAccess を利用する。
+resource "aws_iam_role_policy_attachment" "web_s3" {
+  role       = aws_iam_role.web.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
+# Web EC2にCloudWatch Agent用の権限を付与する。
+# nginx / PumaログをCloudWatch Logsへ送信するために利用する。
+resource "aws_iam_role_policy_attachment" "web_cloudwatch_agent" {
+  role       = aws_iam_role.web.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+# Web EC2にSSM接続用の権限を付与する。
+# Session Managerを使った接続や、将来的な運用確認に備えて付与する。
+resource "aws_iam_role_policy_attachment" "web_ssm" {
+  role       = aws_iam_role.web.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# Bastion EC2.
+# Public Subnet 01に配置し、管理者がSSHで接続する踏み台サーバーとして利用する。
+resource "aws_instance" "bastion" {
+  ami                         = data.aws_ami.amazon_linux_2023.id
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.public_01.id
+  vpc_security_group_ids      = [aws_security_group.bastion.id]
+  key_name                    = aws_key_pair.main.key_name
+  associate_public_ip_address = true
+
+  tags = merge(local.common_tags, {
+    Name = "sample-ec2-bastion"
+  })
+}
+
+# Web EC2 01.
+# Private Subnet 01に配置し、ALBからのHTTP 3000とBastionからのSSHを受ける。
+resource "aws_instance" "web_01" {
+  ami                         = local.web_ami_id
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.private_01.id
+  vpc_security_group_ids      = [aws_security_group.web.id]
+  key_name                    = aws_key_pair.main.key_name
+  iam_instance_profile        = aws_iam_instance_profile.web.name
+  associate_public_ip_address = false
+
+  tags = merge(local.common_tags, {
+    Name = "sample-ec2-web01"
+  })
+}
+
+# Web EC2 02.
+# Private Subnet 02に配置し、ALBからのHTTP 3000とBastionからのSSHを受ける。
+resource "aws_instance" "web_02" {
+  ami                         = local.web_ami_id
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.private_02.id
+  vpc_security_group_ids      = [aws_security_group.web.id]
+  key_name                    = aws_key_pair.main.key_name
+  iam_instance_profile        = aws_iam_instance_profile.web.name
+  associate_public_ip_address = false
+
+  tags = merge(local.common_tags, {
+    Name = "sample-ec2-web02"
+  })
+}
+
+# ALB Target Group.
+# ALBがWeb EC2へHTTP 3000で転送するためのTarget Group。
+resource "aws_lb_target_group" "web" {
+  name        = "sample-tg"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    path                = "/"
+    protocol            = "HTTP"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    timeout             = 5
+    interval            = 30
+    matcher             = "200-399"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "sample-tg"
+  })
+}
+
+# Application Load Balancer.
+# Public Subnet 01 / 02 に配置し、インターネットからのHTTPアクセスを受ける。
+resource "aws_lb" "web" {
+  name               = "sample-elb"
+  load_balancer_type = "application"
+  internal           = false
+  security_groups    = [aws_security_group.elb.id]
+  subnets = [
+    aws_subnet.public_01.id,
+    aws_subnet.public_02.id
+  ]
+
+  tags = merge(local.common_tags, {
+    Name = "sample-elb"
+  })
+}
+
+# ALB HTTP Listener.
+# HTTP 80で受けた通信をTarget Groupへ転送する。
+# HTTPS化とHTTP->HTTPSリダイレクトはACM設定後に追加する。
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.web.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+# Web EC2 01をTarget Groupへ登録する。
+resource "aws_lb_target_group_attachment" "web_01" {
+  target_group_arn = aws_lb_target_group.web.arn
+  target_id        = aws_instance.web_01.id
+  port             = 3000
+}
+
+# Web EC2 02をTarget Groupへ登録する。
+resource "aws_lb_target_group_attachment" "web_02" {
+  target_group_arn = aws_lb_target_group.web.arn
+  target_id        = aws_instance.web_02.id
+  port             = 3000
+}
+

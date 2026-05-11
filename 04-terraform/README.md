@@ -26,11 +26,11 @@ Public Route Table
 Public Route Table Association
 ```
 
-現在は、NAT GatewayとPrivate Route Tableまで追加し、Private Subnetからインターネット方向へ出る経路をTerraformで表現しています。
+現在は、EC2とALBまで追加し、ALB DNS名へHTTPアクセスできるところまで確認しています。
 
-Security GroupとEC2 Key Pair、Amazon Linux 2023 AMI取得まで進めています。
+Web EC2上のアプリケーションは未構築のため、Target Group Health Checkは `unhealthy`、ALBの応答は `502 Bad Gateway` になることを確認済みです。
 
-ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら追加します。
+RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら追加します。
 
 ## フォルダ構成
 
@@ -43,7 +43,7 @@ ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単
     02_nat_gateway.md
     03_security_group.md
     04_ec2.md
-    05_alb.md
+    05_ec2_alb.md
     06_rds.md
     07_s3.md
     08_route53_acm.md
@@ -72,6 +72,7 @@ Terraform化の全体計画は以下に整理しています。
 - [NAT Gateway / Private Route Table](./notes/02_nat_gateway.md)
 - [Security Group](./notes/03_security_group.md)
 - [EC2 Preparation](./notes/04_ec2.md)
+- [EC2 / ALB](./notes/05_ec2_alb.md)
 
 ## 初回作成ファイル
 

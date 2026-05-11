@@ -127,6 +127,9 @@ AWS CLIで作成した構成をTerraformで再現します。
 - `terraform apply`
 - `terraform destroy`
 - VPC / Subnet / Internet Gateway / Public Route Tableの作成と削除
+- EC2 / ALBまでの作成
+- ALB DNS名へのHTTP到達確認
+- Webアプリ未起動時のTarget Group Health Check失敗確認
 
 Links:
 
@@ -136,6 +139,7 @@ Links:
 - [NAT Gateway Terraform化メモ](./04-terraform/notes/02_nat_gateway.md)
 - [Security Group Terraform化メモ](./04-terraform/notes/03_security_group.md)
 - [EC2準備メモ](./04-terraform/notes/04_ec2.md)
+- [EC2 / ALB Terraform化メモ](./04-terraform/notes/05_ec2_alb.md)
 
 ## Daily Operation
 
