@@ -1,3 +1,7 @@
+# ============================================================
+# VPC / Subnet
+# ============================================================
+
 # VPC 本体
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -59,6 +63,10 @@ resource "aws_subnet" "private_02" {
   })
 }
 
+# ============================================================
+# Internet Gateway / Public Route Table
+# ============================================================
+
 # Internet Gateway.
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
@@ -95,6 +103,10 @@ resource "aws_route_table_association" "public_02" {
   subnet_id      = aws_subnet.public_02.id
   route_table_id = aws_route_table.public.id
 }
+
+# ============================================================
+# NAT Gateway / Private Route Table
+# ============================================================
 
 # NAT Gateway用のElastic IP.
 resource "aws_eip" "nat_01" {
@@ -181,6 +193,10 @@ resource "aws_route_table_association" "private_02" {
   subnet_id      = aws_subnet.private_02.id
   route_table_id = aws_route_table.private_02.id
 }
+
+# ============================================================
+# Security Group
+# ============================================================
 
 # Bastion用のSecurity Group.
 # 管理者がSSHで踏み台サーバーへの接続をするために使う。
@@ -410,6 +426,10 @@ resource "aws_security_group_rule" "elasticache_egress_all" {
   description = "Allow all outbound from ElastiCache security group"
 }
 
+# ============================================================
+# EC2 Key Pair / AMI
+# ============================================================
+
 # EC2 Key Pair.
 # SSH接続に使うKey PairをAWSへ登録する。
 # GitHubへ秘密鍵を上げないため、Terraformでは公開鍵ファイルだけを読み込む。
@@ -455,6 +475,10 @@ data "aws_ami" "amazon_linux_2023" {
 locals {
   web_ami_id = var.use_custom_web_ami ? var.custom_web_ami_id : data.aws_ami.amazon_linux_2023.id
 }
+
+# ============================================================
+# IAM Role / Instance Profile
+# ============================================================
 
 # Web EC2用IAM Role.
 # EC2がS3やCloudWatch Logsへアクセスするために利用する。
@@ -513,6 +537,10 @@ resource "aws_iam_role_policy_attachment" "web_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# ============================================================
+# EC2
+# ============================================================
+
 # Bastion EC2.
 # Public Subnet 01に配置し、管理者がSSHで接続する踏み台サーバーとして利用する。
 resource "aws_instance" "bastion" {
@@ -560,6 +588,10 @@ resource "aws_instance" "web_02" {
   })
 }
 
+# ============================================================
+# ALB / Target Group
+# ============================================================
+
 # ALB Target Group.
 # ALBがWeb EC2へHTTP 3000で転送するためのTarget Group。
 resource "aws_lb_target_group" "web" {
@@ -603,18 +635,38 @@ resource "aws_lb" "web" {
 }
 
 # ALB HTTP Listener.
-# HTTP 80で受けた通信をTarget Groupへ転送する。
-# HTTPS化とHTTP->HTTPSリダイレクトはACM設定後に追加する。
+# HTTP 80で受けた通信はHTTPS 443へリダイレクトする。
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.web.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# ALB HTTPS Listener.
+# HTTPS 443で受けた通信をTarget Groupへ転送する。
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.web.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = data.aws_acm_certificate.app.arn
+
+  default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.web.arn
   }
 }
+
 
 # Web EC2 01をTarget Groupへ登録する。
 resource "aws_lb_target_group_attachment" "web_01" {
@@ -628,5 +680,238 @@ resource "aws_lb_target_group_attachment" "web_02" {
   target_group_arn = aws_lb_target_group.web.arn
   target_id        = aws_instance.web_02.id
   port             = 3000
+}
+
+# ============================================================
+# RDS
+# ============================================================
+
+# RDS用DB Subnet Group.
+# RDSをPrivate Subnet 01 / 02 に配置するために利用する。
+resource "aws_db_subnet_group" "main" {
+  name = "sample-db-subnet-group"
+
+  subnet_ids = [
+    aws_subnet.private_01.id,
+    aws_subnet.private_02.id
+  ]
+
+  tags = merge(local.common_tags, {
+    Name = "sample-db-subnet-group"
+  })
+}
+
+# RDS MySQL用Parameter Group.
+# 文字コードなど、MySQLの動作パラメータを管理する。
+resource "aws_db_parameter_group" "mysql" {
+  name   = "sample-db-parameter-group"
+  family = "mysql8.0"
+
+  parameter {
+    name  = "character_set_server"
+    value = "utf8mb4"
+  }
+
+  parameter {
+    name  = "character_set_database"
+    value = "utf8mb4"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "sample-db-parameter-group"
+  })
+}
+
+# RDS MySQL用Option Group.
+# MySQLでは追加オプションを使わないが、AWS CLI版と対応させるため明示的に作成する。
+resource "aws_db_option_group" "mysql" {
+  name                 = "sample-db-option-group"
+  engine_name          = "mysql"
+  major_engine_version = "8.0"
+
+  tags = merge(local.common_tags, {
+    Name = "sample-db-option-group"
+  })
+}
+
+# RDS MySQL Instance.
+# Railsアプリケーションが利用するMySQLデータベース。
+resource "aws_db_instance" "main" {
+  identifier = "sample-db"
+
+  engine         = "mysql"
+  engine_version = "8.0"
+  instance_class = "db.t3.micro"
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = "gp3"
+  storage_encrypted     = false
+
+  db_name  = var.db_name
+  username = var.db_username
+  password = var.db_password
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  parameter_group_name   = aws_db_parameter_group.mysql.name
+  option_group_name      = aws_db_option_group.mysql.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+
+  publicly_accessible = false
+  multi_az            = false
+
+  backup_retention_period = 1
+  backup_window           = "18:00-18:30"
+  maintenance_window      = "sun:19:00-sun:19:30"
+
+  skip_final_snapshot = true
+  deletion_protection = false
+
+  auto_minor_version_upgrade = true
+  apply_immediately          = true
+
+  tags = merge(local.common_tags, {
+    Name = "sample-db"
+  })
+}
+
+# ============================================================
+# S3
+# ============================================================
+
+# Rails Active Storage用S3 Bucket.
+# 投稿画像など、Railsアプリケーションからアップロードされるファイルを保存する。
+resource "aws_s3_bucket" "upload" {
+  bucket = var.upload_bucket_name
+
+  tags = merge(local.common_tags, {
+    Name = var.upload_bucket_name
+  })
+}
+
+# S3 Bucketの所有者設定.
+# オブジェクト所有権をBucket所有者に寄せ、ACLに依存しない構成にする。
+resource "aws_s3_bucket_ownership_controls" "upload" {
+  bucket = aws_s3_bucket.upload.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+# S3 BucketのPublic Access Block.
+# RailsアプリからのアップロードはIAM Role経由で行い、Bucket自体は公開しない。
+resource "aws_s3_bucket_public_access_block" "upload" {
+  bucket = aws_s3_bucket.upload.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# S3 Bucketの暗号化設定.
+# S3管理キー(SSE-S3)でサーバーサイド暗号化を有効にする。
+resource "aws_s3_bucket_server_side_encryption_configuration" "upload" {
+  bucket = aws_s3_bucket.upload.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# S3 Bucketのバージョニング設定.
+# 学習環境ではコストを抑えるため無効にする。
+resource "aws_s3_bucket_versioning" "upload" {
+  bucket = aws_s3_bucket.upload.id
+
+  versioning_configuration {
+    status = "Suspended"
+  }
+}
+
+# ============================================================
+# Route 53 / ACM
+# ============================================================
+
+# 既存のPublic Hosted Zoneを参照する。
+# Hosted Zone自体は既に作成済みのため、Terraformでは新規作成しない。
+data "aws_route53_zone" "public" {
+  name         = var.domain_name
+  private_zone = false
+}
+
+# 既存のACM証明書を参照する。
+# ALBでHTTPS Listenerを作るために利用する。
+# ACM証明書はALBと同じリージョン(ap-northeast-1)に存在する必要がある。
+data "aws_acm_certificate" "app" {
+  domain      = var.app_domain_name
+  statuses    = ["ISSUED"]
+  most_recent = true
+}
+
+# www.nobu-iac-lab.com をALBへ向けるAlias Record.
+# ALBのDNS名とZone IDを使ってRoute 53 Aliasを作成する。
+resource "aws_route53_record" "www" {
+  zone_id = data.aws_route53_zone.public.zone_id
+  name    = var.app_domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.web.dns_name
+    zone_id                = aws_lb.web.zone_id
+    evaluate_target_health = false
+  }
+}
+
+# ============================================================
+# ElastiCache
+# ============================================================
+
+# ElastiCache用Subnet Group.
+# RedisをPrivate Subnet 01 / 02 に配置するために利用する。
+resource "aws_elasticache_subnet_group" "redis" {
+  name = "sample-elasticache-sg"
+
+  subnet_ids = [
+    aws_subnet.private_01.id,
+    aws_subnet.private_02.id
+  ]
+
+  tags = merge(local.common_tags, {
+    Name = "sample-elasticache-sg"
+  })
+}
+
+# ElastiCache Redis Replication Group.
+# RailsアプリケーションからRedisとして利用する。
+resource "aws_elasticache_replication_group" "redis" {
+  replication_group_id = var.elasticache_replication_group_id
+  description          = "Redis replication group for nobu-iac-lab"
+
+  engine         = "redis"
+  engine_version = var.elasticache_engine_version
+  node_type      = var.elasticache_node_type
+
+  port = 6379
+
+  subnet_group_name  = aws_elasticache_subnet_group.redis.name
+  security_group_ids = [aws_security_group.elasticache.id]
+
+  automatic_failover_enabled = false
+  multi_az_enabled           = false
+
+  num_cache_clusters = 1
+
+  at_rest_encryption_enabled = false
+  transit_encryption_enabled = false
+
+  apply_immediately = true
+
+  tags = merge(local.common_tags, {
+    Name = var.elasticache_replication_group_id
+  })
 }
 

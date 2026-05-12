@@ -26,11 +26,11 @@ Public Route Table
 Public Route Table Association
 ```
 
-現在は、EC2とALBまで追加し、ALB DNS名へHTTPアクセスできるところまで確認しています。
+現在は、RDS、S3、Route 53 / ACM、ElastiCacheまで追加し、主要なWebアプリケーション基盤をTerraformで表現しています。
 
 Web EC2上のアプリケーションは未構築のため、Target Group Health Checkは `unhealthy`、ALBの応答は `502 Bad Gateway` になることを確認済みです。
 
-RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら追加します。
+NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら追加します。
 
 ## フォルダ構成
 
@@ -73,6 +73,10 @@ Terraform化の全体計画は以下に整理しています。
 - [Security Group](./notes/03_security_group.md)
 - [EC2 Preparation](./notes/04_ec2.md)
 - [EC2 / ALB](./notes/05_ec2_alb.md)
+- [RDS](./notes/06_rds.md)
+- [S3](./notes/07_s3.md)
+- [Route 53 / ACM](./notes/08_route53_acm.md)
+- [ElastiCache](./notes/09_elasticache.md)
 
 ## 初回作成ファイル
 

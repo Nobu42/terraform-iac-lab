@@ -130,6 +130,8 @@ AWS CLIで作成した構成をTerraformで再現します。
 - EC2 / ALBまでの作成
 - ALB DNS名へのHTTP到達確認
 - Webアプリ未起動時のTarget Group Health Check失敗確認
+- RDS / S3 / Route 53 / ACM / ElastiCacheのplan確認
+- 既存Public Hosted Zone / ACM証明書のdata source参照
 
 Links:
 
@@ -140,6 +142,10 @@ Links:
 - [Security Group Terraform化メモ](./04-terraform/notes/03_security_group.md)
 - [EC2準備メモ](./04-terraform/notes/04_ec2.md)
 - [EC2 / ALB Terraform化メモ](./04-terraform/notes/05_ec2_alb.md)
+- [RDS Terraform化メモ](./04-terraform/notes/06_rds.md)
+- [S3 Terraform化メモ](./04-terraform/notes/07_s3.md)
+- [Route 53 / ACM Terraform化メモ](./04-terraform/notes/08_route53_acm.md)
+- [ElastiCache Terraform化メモ](./04-terraform/notes/09_elasticache.md)
 
 ## Daily Operation
 

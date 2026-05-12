@@ -1,4 +1,6 @@
-# 変数の定義
+# ============================================================
+# AWS Provider
+# ============================================================
 
 variable "aws_profile" {
   description = "AWS CLI profile used by Terraform."
@@ -11,6 +13,10 @@ variable "aws_region" {
   type        = string
   default     = "ap-northeast-1"
 }
+
+# ============================================================
+# VPC / Subnet
+# ============================================================
 
 variable "vpc_cidr" {
   description = "CIDR block for the VPC."
@@ -54,10 +60,18 @@ variable "availability_zone_1c" {
   default     = "ap-northeast-1c"
 }
 
+# ============================================================
+# Security Group
+# ============================================================
+
 variable "admin_ip_cidr" {
-  description = "CIDR block allowed to SSH to the vastion host. Example: x.x.x.x/32"
+  description = "CIDR block allowed to SSH to the bastion host. Example: x.x.x.x/32"
   type        = string
 }
+
+# ============================================================
+# EC2 Key Pair / AMI
+# ============================================================
 
 variable "key_pair_name" {
   description = "EC2 key pair name used for SSH."
@@ -82,3 +96,74 @@ variable "custom_web_ami_id" {
   type        = string
   default     = ""
 }
+
+# ============================================================
+# RDS
+# ============================================================
+
+variable "db_name" {
+  description = "Initial database name for the Rails application."
+  type        = string
+  default     = "sampleapp"
+}
+
+variable "db_username" {
+  description = "Master username for RDS MySQL."
+  type        = string
+  default     = "adminuser"
+}
+
+variable "db_password" {
+  description = "Master password for RDS MySQL."
+  type        = string
+  sensitive   = true
+}
+
+# ============================================================
+# S3
+# ============================================================
+
+variable "upload_bucket_name" {
+  description = "S3 bucket name for Rails Active Storage uploads."
+  type        = string
+  default     = "nobu-terraform-iac-lab-upload"
+}
+
+# ============================================================
+# Route 53 / ACM
+# ============================================================
+
+variable "domain_name" {
+  description = "Root domain name managed by Route 53."
+  type        = string
+  default     = "nobu-iac-lab.com"
+}
+
+variable "app_domain_name" {
+  description = "Application domain name for ALB."
+  type        = string
+  default     = "www.nobu-iac-lab.com"
+}
+
+# ============================================================
+# ElastiCache
+# ============================================================
+
+variable "elasticache_replication_group_id" {
+  description = "Replication group ID for ElastiCache Redis."
+  type        = string
+  default     = "sample-elasticache"
+}
+
+variable "elasticache_node_type" {
+  description = "Node type for ElastiCache Redis."
+  type        = string
+  default     = "cache.t3.micro"
+}
+
+variable "elasticache_engine_version" {
+  description = "Redis engine version for ElastiCache."
+  type        = string
+  default     = "7.1"
+}
+
