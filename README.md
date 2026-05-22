@@ -5,15 +5,15 @@
 ![Shell Script](https://img.shields.io/badge/shell_script-%23121011.svg?style=for-the-badge&logo=gnu-bash&logoColor=white)
 ![Ansible](https://img.shields.io/badge/Ansible-%231A1918.svg?style=for-the-badge&logo=ansible&logoColor=white)
 
-AWS上にWebアプリケーション基盤を構築し、構築手順、依存関係、運用、監視、削除までを確認するための学習用リポジトリです。
+AWS上にWebアプリケーション基盤を構築し、構築手順、依存関係、運用、監視、削除までを確認するための学習用リポジトリ。
 
-AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsibleでRailsアプリケーションをデプロイし、CloudWatchでログ収集・監視を追加します。現在は、同じ構成をTerraformへ段階的に移行しています。
+AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsibleでRailsアプリケーションをデプロイし、CloudWatchでログ収集・監視を追加する。現在は、同じ構成をTerraformへ段階的に移行している。
 
-詳細な学習方針、参考資料、扱っている構成一覧は [Project Overview](./docs/Project_Overview.md) を参照してください。
+詳細な学習方針、参考資料、扱っている構成一覧は [Project Overview](./docs/Project_Overview.md) を参照する。
 
 ## Network Architecture
 
-このラボの論理構成図です。詳細なパラメータ設定については [設計仕様書](./docs/Design_Specification.md) を参照してください。
+このラボの論理構成図。詳細なパラメータ設定については [設計仕様書](./docs/Design_Specification.md) を参照する。
 
 ![Network Architecture](./docs/Network_Architecture.png?v=4)
 
@@ -30,7 +30,7 @@ AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsi
 
 ## 01 AWS CLI
 
-AWS CLIで各AWSリソースを順番に作成し、ネットワーク、サーバー、ロードバランサー、データベース、ストレージ、DNS、証明書、メール、キャッシュの構成を確認します。
+AWS CLIで各AWSリソースを順番に作成し、ネットワーク、サーバー、ロードバランサー、データベース、ストレージ、DNS、証明書、メール、キャッシュの構成を確認する。
 
 主な内容:
 
@@ -53,9 +53,9 @@ Links:
 
 ## 02 Ansible
 
-Ansibleを使って、Private Subnet上のWeb EC2へRails 7.2アプリケーションをデプロイします。
+Ansibleを使って、Private Subnet上のWeb EC2へRails 7.2アプリケーションをデプロイする。
 
-Macから踏み台サーバー経由で `web01` / `web02` に接続し、nginx、Puma、Ruby、Rails、CloudWatch Agentなどを構成します。
+Macから踏み台サーバー経由で `web01` / `web02` に接続し、nginx、Puma、Ruby、Rails、CloudWatch Agentなどを構成する。
 
 確認済み項目:
 
@@ -77,9 +77,9 @@ Links:
 
 ## 03 CloudWatch
 
-CloudWatch Logs、メトリクス、アラーム、ダッシュボードを設定します。
+CloudWatch Logs、メトリクス、アラーム、ダッシュボードを設定する。
 
-CloudWatch Agentでnginx / PumaログをCloudWatch Logsへ集約し、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスに対してAlarmとDashboardを作成しました。
+CloudWatch Agentでnginx / PumaログをCloudWatch Logsへ集約し、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスに対してAlarmとDashboardを作成した。
 
 確認済み項目:
 
@@ -103,10 +103,10 @@ Links:
 
 ## 04 Terraform
 
-AWS CLIで作成した構成をTerraformで再現します。
+AWS CLIで作成した構成をTerraformで再現する。
 
-現在はVPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53 / ACM、ElastiCacheまでをTerraformで表現しています。
-既存のPublic Hosted ZoneやACM証明書はdata sourceで参照し、日次で作成・削除するリソースと継続利用するリソースを分けています。
+現在はVPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53 / ACM、ElastiCacheまでをTerraformで表現している。
+既存のPublic Hosted ZoneやACM証明書はdata sourceで参照し、日次で作成・削除するリソースと継続利用するリソースを分けている。
 
 確認済み項目:
 
@@ -145,18 +145,18 @@ Links:
 
 ## Daily Operation
 
-学習コストを抑えるため、必要なときにAWSリソースを作成し、作業終了後に削除します。
+学習コストを抑えるため、必要なときにAWSリソースを作成し、作業終了後に削除する。
 
 ### Startup
 
-AWSリソースを作成します。
+AWSリソースを作成する。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/01-aws-cli/scripts
 ./All_Setup.sh
 ```
 
-AnsibleでRailsアプリケーションとCloudWatch Agentを構成します。
+AnsibleでRailsアプリケーションとCloudWatch Agentを構成する。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/02-ansible
@@ -165,7 +165,7 @@ export SECRET_KEY_BASE=$(openssl rand -hex 64)
 ansible-playbook playbooks/site.yml
 ```
 
-CloudWatch AlarmとDashboardを作成します。
+CloudWatch AlarmとDashboardを作成する。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/03-cloudwatch/scripts
@@ -189,7 +189,7 @@ aws cloudwatch describe-alarms \
 
 ### Cleanup
 
-CloudWatch AlarmとDashboardを削除します。
+CloudWatch AlarmとDashboardを削除する。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/03-cloudwatch/scripts
@@ -202,7 +202,7 @@ Log Groupも含めて完全に削除する場合:
 DELETE_LOG_GROUPS=true ./03_cleanup_cloudwatch.sh
 ```
 
-AWSリソース本体を削除し、残存確認とコスト確認を行います。
+AWSリソース本体を削除し、残存確認とコスト確認を行う。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/01-aws-cli/scripts
@@ -211,7 +211,7 @@ cd /Users/nobu/terraform-iac-lab/01-aws-cli/scripts
 ./check_cost.sh
 ```
 
-`cleanup_all.sh` では、ドメイン登録、Public Hosted Zone、ACM証明書、SES Domain Identity、DKIM/SPF/DMARC、SES SMTP IAM userなど、継続利用するリソースは残します。
+`cleanup_all.sh` では、ドメイン登録、Public Hosted Zone、ACM証明書、SES Domain Identity、DKIM/SPF/DMARC、SES SMTP IAM userなど、継続利用するリソースは残す。
 
 ## Documents
 

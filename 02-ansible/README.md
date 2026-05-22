@@ -1,8 +1,8 @@
 # 02 Ansible
 
-このディレクトリでは、Ansibleを使ってPrivate Subnet上のWebサーバー `web01` / `web02` を構成管理します。
+このディレクトリでは、Ansibleを使ってPrivate Subnet上のWebサーバー `web01` / `web02` を構成管理する。
 
-AWS CLI編で作成したVPC、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheなどのAWSリソース上に、Rails 7.2アプリケーションをデプロイします。
+AWS CLI編で作成したVPC、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheなどのAWSリソース上に、Rails 7.2アプリケーションをデプロイする。
 
 ## 目的
 
@@ -18,7 +18,7 @@ AWS CLI編で作成したVPC、EC2、ALB、RDS、S3、Route 53、ACM、SES、Ela
 
 ## 実行環境
 
-AnsibleはMacから実行します。
+AnsibleはMacから実行する。
 
 ```text
 Mac
@@ -73,13 +73,13 @@ web01 / web02
 
 ## Notes
 
-Ansibleの基本文法、Inventory、よく使うモジュール、実行コマンド、冪等性、トラブル対応は以下に整理しています。
+Ansibleの基本文法、Inventory、よく使うモジュール、実行コマンド、冪等性、トラブル対応は以下に整理している。
 
 - [Ansible Reference](./notes/00_ansible_reference.md)
 
 ## Inventory
 
-`inventory/hosts.ini` にAnsibleの接続先を定義します。
+`inventory/hosts.ini` にAnsibleの接続先を定義する。
 
 ```ini
 [web]
@@ -92,11 +92,11 @@ ansible_ssh_common_args='-o ProxyJump=bastion'
 ansible_python_interpreter=/usr/bin/python3.9
 ```
 
-`web01`、`web02`、`bastion` は `~/.ssh/config` に定義済みであることを前提とします。
+`web01`、`web02`、`bastion` は `~/.ssh/config` に定義済みであることを前提とする。
 
 ## 事前確認
 
-通常のSSH接続を確認します。
+通常のSSH接続を確認する。
 
 ```bash
 ssh web01
@@ -113,7 +113,7 @@ ansible-playbook playbooks/01_ping.yml
 
 ### 通常AMIから構築する場合
 
-Amazon Linux 2023の公式AMIからWeb EC2を作成した場合は、Rubyのビルドを含めて以下を実行します。
+Amazon Linux 2023の公式AMIからWeb EC2を作成した場合は、Rubyのビルドを含めて以下を実行する。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/02-ansible
@@ -125,7 +125,7 @@ ansible-playbook playbooks/04_nginx.yml
 ansible-playbook playbooks/05_ruby.yml
 ```
 
-その後、Rails 7.2サンプルアプリをデプロイします。
+その後、Rails 7.2サンプルアプリをデプロイする。
 
 ```bash
 export DB_MASTER_PASSWORD='RDS作成時のパスワード'
@@ -136,16 +136,16 @@ ansible-playbook playbooks/08_sample_app_rails72.yml
 
 ### カスタムAMIから構築する場合
 
-Ruby 3.3.6 / Bundler / nginx / deployユーザー導入済みのカスタムAMIを使う場合、Rubyビルドを省略できます。
+Ruby 3.3.6 / Bundler / nginx / deployユーザー導入済みのカスタムAMIを使う場合、Rubyビルドを省略できる。
 
-この場合、AWS CLI編の `08_Web_server_setup.sh` で以下の設定を使います。
+この場合、AWS CLI編の `08_Web_server_setup.sh` で以下の設定を使う。
 
 ```bash
 USE_CUSTOM_WEB_AMI=true
 CUSTOM_WEB_AMI_ID="ami-00f86224c38cc3b8c"
 ```
 
-Ansible側では以下を実行します。
+Ansible側では以下を実行する。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/02-ansible
@@ -156,11 +156,11 @@ export SECRET_KEY_BASE=$(openssl rand -hex 64)
 ansible-playbook playbooks/site.yml
 ```
 
-必要に応じて `02_packages.yml`、`03_deploy_user.yml`、`05_ruby.yml` を再実行しても、基本的には冪等に処理されます。
+必要に応じて `02_packages.yml`、`03_deploy_user.yml`、`05_ruby.yml` を再実行しても、基本的には冪等に処理される。
 
 ### まとめPlaybook
 
-日次再構築では、カスタムAMIを使う前提で以下を実行します。
+日次再構築では、カスタムAMIを使う前提で以下を実行する。
 
 ```bash
 export DB_MASTER_PASSWORD='RDS作成時のパスワード'
@@ -176,7 +176,7 @@ ansible-playbook playbooks/site.yml
 - import_playbook: 08_sample_app_rails72.yml
 ```
 
-Amazon Linux 2023の公式AMIからRubyビルドも含めて構築する場合は、以下を使います。
+Amazon Linux 2023の公式AMIからRubyビルドも含めて構築する場合は、以下を使う。
 
 ```bash
 export DB_MASTER_PASSWORD='RDS作成時のパスワード'
@@ -210,11 +210,11 @@ ansible-playbook playbooks/site_full.yml
 | `site.yml` | カスタムAMI前提の日次再構築用まとめPlaybook |
 | `site_full.yml` | 公式AMIからRubyビルドも含めて構築するフル実行Playbook |
 
-現在の主なデプロイ対象は `08_sample_app_rails72.yml` です。
+現在の主なデプロイ対象は `08_sample_app_rails72.yml`。
 
 ## 08_sample_app_rails72.yml
 
-Rails 7.2で、書籍サンプルアプリ相当の簡易SNSアプリを構築します。
+Rails 7.2で、書籍サンプルアプリ相当の簡易SNSアプリを構築する。
 
 主な内容:
 
@@ -239,7 +239,7 @@ password
 
 ## 環境変数
 
-`08_sample_app_rails72.yml` 実行前に、Mac側で以下を設定します。
+`08_sample_app_rails72.yml` 実行前に、Mac側で以下を設定する。
 
 ```bash
 export DB_MASTER_PASSWORD='RDS作成時のパスワード'
@@ -248,28 +248,28 @@ export SECRET_KEY_BASE=$(openssl rand -hex 64)
 
 ### DB_MASTER_PASSWORD
 
-RDS作成時に指定したmaster userのパスワードです。
+RDS作成時に指定したmaster userのパスワード。
 
-Playbook内には直書きせず、環境変数から読み込みます。
+Playbook内には直書きせず、環境変数から読み込む。
 
 ### SECRET_KEY_BASE
 
-Rails productionでCookie署名やCSRF token検証に使う秘密鍵です。
+Rails productionでCookie署名やCSRF token検証に使う秘密鍵。
 
-ALB配下で `web01` / `web02` の2台構成にしているため、両方のWeb EC2で同じ値を使う必要があります。
+ALB配下で `web01` / `web02` の2台構成にしているため、両方のWeb EC2で同じ値を使う必要がある。
 
-値がEC2ごとに異なると、以下のように別インスタンスへ振り分けられた場合にCSRF検証で失敗します。
+値がEC2ごとに異なると、以下のように別インスタンスへ振り分けられた場合にCSRF検証で失敗する。
 
 ```text
 GET  /login   -> web01
 POST /session -> web02
 ```
 
-この問題を避けるため、Mac側で生成した共通値をAnsibleから `/etc/nobu-iac-lab.env` へ配布します。
+この問題を避けるため、Mac側で生成した共通値をAnsibleから `/etc/nobu-iac-lab.env` へ配布する。
 
 ## アプリケーション設定ファイル
 
-Rails productionの環境変数は、各Web EC2上の以下に配置します。
+Rails productionの環境変数は、各Web EC2上の以下に配置する。
 
 ```text
 /etc/nobu-iac-lab.env
@@ -283,9 +283,9 @@ group: deploy
 mode : 0640
 ```
 
-Pumaはdeployユーザーで動作するため、deployグループに読み取り権限を付与しています。
+Pumaはdeployユーザーで動作するため、deployグループに読み取り権限を付与している。
 
-このファイルにはDBパスワードや `SECRET_KEY_BASE` が含まれるため、GitHubには保存しません。
+このファイルにはDBパスワードや `SECRET_KEY_BASE` が含まれるため、GitHubには保存しない。
 
 ## 確認コマンド
 
@@ -308,7 +308,7 @@ S3画像保存確認:
 aws s3 ls s3://nobu-terraform-iac-lab-upload --recursive --profile learning
 ```
 
-画像投稿後にオブジェクトが表示されれば、Active Storage経由でS3へ保存されています。
+画像投稿後にオブジェクトが表示されれば、Active Storage経由でS3へ保存されている。
 
 Puma状態確認:
 
@@ -350,7 +350,7 @@ sudo systemctl status nginx --no-pager
 
 ## Railsアプリの機能範囲
 
-現時点では、AWS上でのデプロイ、RDS接続、S3画像保存、複数Web EC2構成の確認を目的としているため、Railsアプリの機能は最小限にしています。
+現時点では、AWS上でのデプロイ、RDS接続、S3画像保存、複数Web EC2構成の確認を目的としているため、Railsアプリの機能は最小限にしている。
 
 実装済み:
 
@@ -368,11 +368,11 @@ sudo systemctl status nginx --no-pager
 - パスワードリセット
 - メール認証
 
-Railsアプリ自体を大きくするよりも、AWS構成、Ansibleによる再現性、ログ調査、運用改善を優先します。
+Railsアプリ自体を大きくするよりも、AWS構成、Ansibleによる再現性、ログ調査、運用改善を優先する。
 
 ## 対応した主なトラブル
 
-詳細は [Troubleshooting](../docs/Troubleshooting.md) を参照してください。
+詳細は [Troubleshooting](../docs/Troubleshooting.md) を参照する。
 
 - ALB配下のRailsでHTTPSリダイレクトループが発生した
 - Web EC2 2台構成でログイン時にCSRFエラーが発生した
@@ -381,7 +381,7 @@ Railsアプリ自体を大きくするよりも、AWS構成、Ansibleによる�
 
 ## 現在の到達点
 
-以下を確認済みです。
+以下を確認済み。
 
 - AnsibleでWeb EC2 2台へRails 7.2アプリをデプロイ
 - Puma + nginxでRails production起動
@@ -395,7 +395,7 @@ Railsアプリ自体を大きくするよりも、AWS構成、Ansibleによる�
 
 ## site.yml実行確認
 
-カスタムWebベースAMIから作成した `web01` / `web02` に対して、以下のまとめPlaybookでRailsアプリケーションとCloudWatch Agentを一括設定できることを確認しました。
+カスタムWebベースAMIから作成した `web01` / `web02` に対して、以下のまとめPlaybookでRailsアプリケーションとCloudWatch Agentを一括設定できることを確認した。
 
 ```bash
 export DB_MASTER_PASSWORD='RDS作成時のパスワード'
@@ -403,7 +403,7 @@ export SECRET_KEY_BASE=$(openssl rand -hex 64)
 ansible-playbook playbooks/site.yml
 ```
 
-`site.yml` では以下を順番に実行します。
+`site.yml` では以下を順番に実行する。
 
 ```yaml
 - import_playbook: 01_ping.yml
@@ -412,7 +412,7 @@ ansible-playbook playbooks/site.yml
 - import_playbook: 09_cloudwatch_agent.yml
 ```
 
-実行後、以下を確認しました。
+実行後、以下を確認した。
 
 - `https://www.nobu-iac-lab.com` が `HTTP/2 200` を返すこと
 - RailsログがCloudWatch Logsの `/nobu-iac-lab/puma/stdout` に送信されること

@@ -1,9 +1,9 @@
 # 04 Terraform
 
-このディレクトリでは、AWS CLIとShell Scriptで構築してきたAWS Webアプリケーション基盤をTerraformへ段階的に移行します。
+このディレクトリでは、AWS CLIとShell Scriptで構築してきたAWS Webアプリケーション基盤をTerraformへ段階的に移行する。
 
-まずはVPC、Subnet、Internet Gateway、Route Tableなどのネットワーク基盤から始め、EC2、ALB、RDS、S3、Route 53、ElastiCacheまで段階的に広げています。
-次の段階では、Private Hosted Zone、CloudWatch、GuardDutyなど、運用・監視・セキュリティ寄りの構成を追加します。
+まずはVPC、Subnet、Internet Gateway、Route Tableなどのネットワーク基盤から始め、EC2、ALB、RDS、S3、Route 53、ElastiCacheまで段階的に広げている。
+次の段階では、Private Hosted Zone、CloudWatch、GuardDutyなど、運用・監視・セキュリティ寄りの構成を追加する。
 
 ## 目的
 
@@ -14,7 +14,7 @@
 
 ## 現在の方針
 
-最初から全リソースをTerraform化せず、小さい単位で確認しながら進めます。
+最初から全リソースをTerraform化せず、小さい単位で確認しながら進める。
 
 段階的に追加してきた対象:
 
@@ -36,11 +36,11 @@ Route 53 / ACM
 ElastiCache
 ```
 
-現在は、RDS、S3、Route 53 / ACM、ElastiCacheまで追加し、主要なWebアプリケーション基盤をTerraformで表現しています。
+現在は、RDS、S3、Route 53 / ACM、ElastiCacheまで追加し、主要なWebアプリケーション基盤をTerraformで表現している。
 
-Web EC2上のアプリケーションは未構築のため、Target Group Health Checkは `unhealthy`、ALBの応答は `502 Bad Gateway` になることを確認済みです。
+Web EC2上のアプリケーションは未構築のため、Target Group Health Checkは `unhealthy`、ALBの応答は `502 Bad Gateway` になることを確認済み。
 
-NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら扱います。
+NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら扱う。
 
 次に扱う予定:
 
@@ -76,11 +76,11 @@ NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは�
   modules/
 ```
 
-最初は `envs/dev` に素直に書き、構成が一通り動いてから `modules/` への切り出しを検討します。
+最初は `envs/dev` に素直に書き、構成が一通り動いてから `modules/` への切り出しを検討する。
 
 ## Notes
 
-Terraform化の全体計画は以下に整理しています。
+Terraform化の全体計画は以下に整理している。
 
 - [Terraform化計画](./notes/00_terraform_plan.md)
 - [VPC / Subnet / Internet Gateway / Public Route Table](./notes/01_vpc.md)
@@ -112,11 +112,11 @@ Terraform化の全体計画は以下に整理しています。
 04-terraform/envs/dev/terraform.tfvars.example
 ```
 
-初回はlocal backendで開始します。S3 backendやstate lockは、基本操作に慣れてから追加します。
+初回はlocal backendで開始する。S3 backendやstate lockは、基本操作に慣れてから追加する。
 
 ## 基本コマンド
 
-Terraform作業は `envs/dev` で実行します。
+Terraform作業は `envs/dev` で実行する。
 
 ```bash
 cd /Users/nobu/terraform-iac-lab/04-terraform/envs/dev
@@ -169,7 +169,7 @@ terraform destroy
 
 ## 既存リソースの扱い
 
-以下は既に作成済みで、日次削除しないため、最初はTerraform管理に入れません。
+以下は既に作成済みで、日次削除しないため、最初はTerraform管理に入れない。
 
 - ドメイン登録
 - Public Hosted Zone本体
@@ -179,4 +179,4 @@ terraform destroy
 - SES DKIM / SPF / DMARC
 - SES SMTP IAM User
 
-必要になったらdata sourceで参照し、後続で `terraform import` を検討します。
+必要になったらdata sourceで参照し、後続で `terraform import` を検討する。

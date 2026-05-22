@@ -1,8 +1,8 @@
 # 01 AWS CLI & Shell Script
 
-このディレクトリでは、AWS CLIとシェルスクリプトを使って、AWS上にWebアプリケーション基盤を段階的に構築します。
+このディレクトリでは、AWS CLIとシェルスクリプトを使って、AWS上にWebアプリケーション基盤を段階的に構築する。
 
-VPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheを順番に作成し、各AWSリソースの役割、依存関係、確認方法、削除方法を整理します。
+VPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53、ACM、SES、ElastiCacheを順番に作成し、各AWSリソースの役割、依存関係、確認方法、削除方法を整理する。
 
 ## 目的
 
@@ -110,7 +110,7 @@ ssh_port.sh
 
 ## 実行順序
 
-基本構成を作成する場合は、以下の順番で実行します。
+基本構成を作成する場合は、以下の順番で実行する。
 
 ```bash
 ./01_vpc_setup.sh
@@ -130,7 +130,7 @@ ssh_port.sh
 ./19_elasticache_setup.sh
 ```
 
-まとめて実行する場合は、`All_Setup.sh` を利用します。
+まとめて実行する場合は、`All_Setup.sh` を利用する。
 
 ```bash
 ./All_Setup.sh
@@ -138,7 +138,7 @@ ssh_port.sh
 
 ## 毎回実行しないスクリプト
 
-以下は初回設定、または必要な時だけ実行します。
+以下は初回設定、または必要な時だけ実行する。
 
 | スクリプト | 実行タイミング |
 | :--- | :--- |
@@ -152,7 +152,7 @@ ssh_port.sh
 
 ## 構築後の確認
 
-構築後は以下を確認します。
+構築後は以下を確認する。
 
 ```bash
 ./check_setup.sh
@@ -173,21 +173,21 @@ ssh_port.sh
 
 ## 削除
 
-学習後は課金を抑えるため、削除スクリプトを実行します。
+学習後は課金を抑えるため、削除スクリプトを実行する。
 
 ```bash
 ./cleanup_all.sh
 ```
 
-削除後は以下で確認します。
+削除後は以下で確認する。
 
 ```bash
 ./check_cleanup.sh
 ```
 
-削除スクリプトでは、日々の学習で作成する課金対象リソースを削除します。
+削除スクリプトでは、日々の学習で作成する課金対象リソースを削除する。
 
-一方で、以下は継続利用するため残します。
+一方で、以下は継続利用するため残す。
 
 - ドメイン登録
 - Route 53 Public Hosted Zone
@@ -199,11 +199,11 @@ ssh_port.sh
 
 ## 注意事項
 
-このディレクトリのスクリプトは実AWSにリソースを作成します。実行前にリージョン、プロファイル、課金対象リソース、削除手順を確認してください。
+このディレクトリのスクリプトは実AWSにリソースを作成する。実行前にリージョン、プロファイル、課金対象リソース、削除手順を確認する。
 
-特にNAT Gateway、ALB、RDS、ElastiCacheは起動時間に応じて料金が発生します。学習が終わったら `cleanup_all.sh` を実行します。
+特にNAT Gateway、ALB、RDS、ElastiCacheは起動時間に応じて料金が発生する。学習が終わったら `cleanup_all.sh` を実行する。
 
-秘密鍵、認証情報、SMTPパスワード、`.pem` ファイルはリポジトリに含めません。
+秘密鍵、認証情報、SMTPパスワード、`.pem` ファイルはリポジトリに含めない。
 
 ## 関連ドキュメント
 
@@ -211,4 +211,3 @@ ssh_port.sh
 - [保守・運用計画](../docs/Operation_Design.md)
 - [AWS CLI コマンドメモ](../docs/aws_commands.md)
 - [ネットワーク構成図](../docs/Network_Architecture.png)
-

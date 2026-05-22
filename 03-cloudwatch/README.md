@@ -1,10 +1,10 @@
 # 03 CloudWatch
 
-このディレクトリでは、AWS CLIとAnsibleで構築したRailsアプリケーション環境に対して、CloudWatchによるログ収集と監視を追加します。
+このディレクトリでは、AWS CLIとAnsibleで構築したRailsアプリケーション環境に対して、CloudWatchによるログ収集と監視を追加する。
 
-まずはEC2上のnginx / PumaログをCloudWatch Logsへ集約し、アプリケーションの動作確認やトラブル調査に利用できる状態を作ります。
+まずはEC2上のnginx / PumaログをCloudWatch Logsへ集約し、アプリケーションの動作確認やトラブル調査に利用できる状態を作る。
 
-現在、CloudWatch Agentによるnginx / Pumaログ収集、主要メトリクスのCloudWatch Alarm作成、CloudWatch Dashboard作成まで確認済みです。
+現在、CloudWatch Agentによるnginx / Pumaログ収集、主要メトリクスのCloudWatch Alarm作成、CloudWatch Dashboard作成まで確認済み。
 
 ## 目的
 
@@ -16,7 +16,7 @@
 
 ## 対象構成
 
-CloudWatch Logs収集対象は、AnsibleでデプロイしたRails 7.2アプリケーション環境です。
+CloudWatch Logs収集対象は、AnsibleでデプロイしたRails 7.2アプリケーション環境。
 
 ```text
 Route 53
@@ -36,7 +36,7 @@ RDS / S3
 
 ## 収集対象ログ
 
-まずは以下のログをCloudWatch Logsへ送信します。
+まずは以下のログをCloudWatch Logsへ送信する。
 
 | 種類 | パス | 用途 |
 | :--- | :--- | :--- |
@@ -47,7 +47,7 @@ RDS / S3
 
 ## Log Group設計
 
-CloudWatch Logsでは、以下のLog Groupを作成する方針です。
+CloudWatch Logsでは、以下のLog Groupを作成する方針。
 
 | Log Group | 対象 |
 | :--- | :--- |
@@ -56,11 +56,11 @@ CloudWatch Logsでは、以下のLog Groupを作成する方針です。
 | `/nobu-iac-lab/puma/stdout` | Puma stdout log |
 | `/nobu-iac-lab/puma/stderr` | Puma stderr log |
 
-Log StreamにはEC2インスタンスIDやホスト名を含め、`web01` / `web02` のログを区別できるようにします。
+Log StreamにはEC2インスタンスIDやホスト名を含め、`web01` / `web02` のログを区別できるようにする。
 
 ## 実装方針
 
-CloudWatch Logsへのログ転送にはCloudWatch Agentを利用します。
+CloudWatch Logsへのログ転送にはCloudWatch Agentを利用する。
 
 実施内容:
 
@@ -72,7 +72,7 @@ CloudWatch Logsへのログ転送にはCloudWatch Agentを利用します。
 
 ## Ansible Playbook
 
-Ansible編に以下のPlaybookを追加しました。
+Ansible編に以下のPlaybookを追加した。
 
 ```text
 02-ansible/playbooks/09_cloudwatch_agent.yml
@@ -85,7 +85,7 @@ Ansible編に以下のPlaybookを追加しました。
 - CloudWatch Agentの起動
 - CloudWatch Agentの状態確認
 
-日次再構築用の `site.yml` にも追加済みです。
+日次再構築用の `site.yml` にも追加済み。
 
 ```yaml
 - import_playbook: 09_cloudwatch_agent.yml
@@ -93,7 +93,7 @@ Ansible編に以下のPlaybookを追加しました。
 
 ## 確認済み
 
-CloudWatch Agentは `web01` / `web02` の両方で起動済みです。
+CloudWatch Agentは `web01` / `web02` の両方で起動済み。
 
 ```text
 status: running
@@ -101,7 +101,7 @@ configstatus: configured
 version: 1.300064.2
 ```
 
-Log Groupは以下を確認済みです。
+Log Groupは以下を確認済み。
 
 ```text
 /nobu-iac-lab/nginx/access
@@ -110,16 +110,16 @@ Log Groupは以下を確認済みです。
 /nobu-iac-lab/puma/stderr
 ```
 
-各Log Groupの保持期間は7日です。
+各Log Groupの保持期間は7日。
 
-`/nobu-iac-lab/puma/stdout` では、`web01` / `web02` それぞれのLog Streamが作成されることを確認しました。
+`/nobu-iac-lab/puma/stdout` では、`web01` / `web02` それぞれのLog Streamが作成されることを確認した。
 
 ```text
 i-00a0a32ed5b654e95
 i-0852dd2d2ec66f138
 ```
 
-Puma stdoutでは、Railsのリクエストログを検索できることを確認しました。
+Puma stdoutでは、Railsのリクエストログを検索できることを確認した。
 
 ```text
 Started GET "/"
@@ -127,13 +127,13 @@ Started GET "/login"
 Started GET "/users/new"
 ```
 
-nginx access logでは、ALB Health Checkのアクセスログを確認しました。
+nginx access logでは、ALB Health Checkのアクセスログを確認した。
 
 ```text
 ELB-HealthChecker/2.0
 ```
 
-CloudWatch Alarmは以下を確認済みです。
+CloudWatch Alarmは以下を確認済み。
 
 ```text
 nobu-iac-lab-ec2-<instance-id>-cpu-high
@@ -147,17 +147,17 @@ nobu-iac-lab-elasticache-cpu-high
 nobu-iac-lab-elasticache-curr-connections-high
 ```
 
-CloudWatch Dashboardは以下を確認済みです。
+CloudWatch Dashboardは以下を確認済み。
 
 ```text
 nobu-iac-lab-dashboard
 ```
 
-Dashboardには、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスを配置しています。
+Dashboardには、EC2、ALB、Target Group、RDS、ElastiCacheの主要メトリクスを配置している。
 
 ## 確認観点
 
-CloudWatch Logs設定後、以下を確認します。
+CloudWatch Logs設定後、以下を確認する。
 
 - nginx access logがCloudWatch Logsへ送信されること
 - nginx error logがCloudWatch Logsへ送信されること
