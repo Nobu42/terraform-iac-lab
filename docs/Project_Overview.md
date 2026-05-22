@@ -1,31 +1,31 @@
 # Project Overview
 
-このドキュメントでは、`terraform-iac-lab` の学習方針、参考資料、扱っているAWS構成、確認観点を整理します。
+このドキュメントでは、`terraform-iac-lab` の学習方針、参考資料、扱っているAWS構成、確認観点を整理する。
 
-ルートREADMEはリポジトリ全体の入口として簡潔にし、詳細な背景や一覧情報はこのドキュメントにまとめます。
+ルートREADMEはリポジトリ全体の入口として簡潔にし、詳細な背景や一覧情報はこのドキュメントにまとめる。
 
 ## 参考資料と本リポジトリの位置づけ
 
-本リポジトリのAWS基本構成は、以下の書籍を参考にしています。
+本リポジトリのAWS基本構成は、以下の書籍を参考にしている。
 
 - 書籍名: `AWSではじめるインフラ構築入門 第2版`
 - 著者: `中垣 健志`
 - 出版社: `株式会社 翔泳社`
 - ISBN: `978-4-7981-8016-8`
 
-参考書籍では、AWSマネジメントコンソールを使って、VPC、Subnet、EC2、ALB、RDSなどをGUI操作で構築しています。
+参考書籍では、AWSマネジメントコンソールを使って、VPC、Subnet、EC2、ALB、RDSなどをGUI操作で構築している。
 
-本リポジトリでは、その構成を題材として、GUI操作ではなくAWS CLIとShell Scriptで再構成しました。
+本リポジトリでは、その構成を題材として、GUI操作ではなくAWS CLIとShell Scriptで再構成した。
 
-各リソースの作成順序、依存関係、削除順序を理解するために、構築スクリプト、確認スクリプト、削除スクリプト、コスト確認スクリプトを作成しています。
+各リソースの作成順序、依存関係、削除順序を理解するために、構築スクリプト、確認スクリプト、削除スクリプト、コスト確認スクリプトを作成している。
 
-さらに、Amazon Linux 2023での差分対応、Route 53 Public / Private DNS、ACM、SES、ElastiCache、AnsibleによるRailsデプロイ、CloudWatch監視、Terraform化、GuardDuty、Auto Scaling、ECS/Fargate、CI/CDへ学習範囲を広げていく予定です。
+さらに、Amazon Linux 2023での差分対応、Route 53 Public / Private DNS、ACM、SES、ElastiCache、AnsibleによるRailsデプロイ、CloudWatch監視、Terraform化、GuardDuty、Auto Scaling、ECS/Fargate、CI/CDへ学習範囲を広げていく予定。
 
-そのため、本リポジトリは書籍内容の単純な写経ではなく、GUIベースの構築手順をコード化し、運用と自動化の観点を加えて再構成した学習用ポートフォリオです。
+そのため、本リポジトリは書籍内容の単純な写経ではなく、GUIベースの構築手順をコード化し、運用と自動化の観点を加えて再構成した学習用ポートフォリオ。
 
 ## 学習方針
 
-このリポジトリでは、いきなりTerraformから始めず、まずAWS CLIで各リソースの作成順序と依存関係を確認します。
+このリポジトリでは、いきなりTerraformから始めず、まずAWS CLIで各リソースの作成順序と依存関係を確認する。
 
 1. AWS CLIでリソースの作成手順を確認する
 2. Shell Scriptで構築手順を整理する

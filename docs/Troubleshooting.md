@@ -1,8 +1,8 @@
 # Troubleshooting
 
-このドキュメントは、AWS CLI、Shell Script、AnsibleでAWS学習環境を構築する中で発生したエラーと対応内容をまとめたものです。
+このドキュメントは、AWS CLI、Shell Script、AnsibleでAWS学習環境を構築する中で発生したエラーと対応内容をまとめたもの。
 
-単にエラーを記録するだけでなく、原因、対応、再発防止策を整理することで、今後のTerraform化や運用改善につなげることを目的とします。
+単にエラーを記録するだけでなく、原因、対応、再発防止策を整理することで、今後のTerraform化や運用改善につなげることを目的とする。
 
 ## 1. AWS CLIがLocalStackへ接続してしまう
 
@@ -616,7 +616,7 @@ fi
 SESのSandbox外利用を申請したが、承認されなかった。
 
 ```text
-現時点では制限の引き上げを承認することができません。
+現時点では制限の引き上げを承認することができない。
 ```
 
 ### 原因
@@ -1276,7 +1276,7 @@ Rails側ではPostモデルで画像サイズを5MBまでに制限している�
 
 ```ruby
 unless image.byte_size <= 5.megabytes
-  errors.add(:image, "は5MB以下にしてください")
+  errors.add(:image, "は5MB以下にすること")
 end
 ```
 

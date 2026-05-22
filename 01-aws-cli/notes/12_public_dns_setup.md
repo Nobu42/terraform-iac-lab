@@ -11,7 +11,7 @@ AWS CLIでRoute 53のPublic Hosted ZoneにDNSレコードを作成する。
 
 ## 実行環境
 
-この手順は以下の環境で検証しています。
+この手順は以下の環境で検証している。
 
 - 実行環境: 実AWS
 - リージョン: ap-northeast-1

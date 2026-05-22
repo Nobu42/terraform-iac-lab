@@ -568,7 +568,7 @@ Dashboardには、グラフだけでなくMarkdown形式のテキストも配置
   "width": 24,
   "height": 3,
   "properties": {
-    "markdown": "# nobu-iac-lab CloudWatch Dashboard\nEC2 / ALB / RDS / ElastiCache の主要メトリクスを一覧します。"
+    "markdown": "# nobu-iac-lab CloudWatch Dashboard\nEC2 / ALB / RDS / ElastiCache の主要メトリクスを一覧する。"
   }
 }
 ```

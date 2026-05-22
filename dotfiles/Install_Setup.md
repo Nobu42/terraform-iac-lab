@@ -57,10 +57,10 @@ echo -e "\r LocalStack is Ready!    " # \r で上書きして消去
 ```
 
 ## Raspberry Pi (CoreDNS)
-### ラズパイを DNS サーバーとして使用し、localstack.lab を Ubuntu の IP に解決させます。
+### ラズパイを DNS サーバーとして使用し、localstack.lab を Ubuntu の IP に解決させる。
 ```
 # Corefile 設定
-# /etc/coredns/Corefile に以下を記述します。
+# /etc/coredns/Corefile に以下を記述する。
 
 # .lab ドメインの設定
 lab:53 {

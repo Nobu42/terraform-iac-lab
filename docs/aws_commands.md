@@ -1,12 +1,12 @@
 # AWS CLI コマンド集
 
-AWS CLIで実AWS環境を操作・確認するためのコマンド集です。
+AWS CLIで実AWS環境を操作・確認するためのコマンド集。
 
-このリポジトリでは、AWS CLIによるインフラ構築を通して、VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、EC2などの依存関係を確認します。
+このリポジトリでは、AWS CLIによるインフラ構築を通して、VPC、Subnet、Internet Gateway、NAT Gateway、Route Table、Security Group、EC2などの依存関係を確認する。
 
 ## 基本方針
 
-このプロジェクトでは、実AWS操作時に以下を明示します。
+このプロジェクトでは、実AWS操作時に以下を明示する。
 
 ```bash
 --profile learning
@@ -21,7 +21,7 @@ aws sts get-caller-identity \
   --region ap-northeast-1
 ```
 
-LocalStack用のendpoint設定が残っていると、実AWSではなくLocalStackへ向いてしまうため注意します。
+LocalStack用のendpoint設定が残っていると、実AWSではなくLocalStackへ向いてしまうため注意する。
 
 ```bash
 unalias aws 2>/dev/null || true
@@ -31,7 +31,7 @@ unset LOCALSTACK_HOST
 
 ## 1. 認証情報・操作対象の確認
 
-現在どのAWSアカウント、IAMユーザーで操作しているか確認します。
+現在どのAWSアカウント、IAMユーザーで操作しているか確認する。
 
 ```bash
 aws sts get-caller-identity \
@@ -45,7 +45,7 @@ aws sts get-caller-identity \
 arn:aws:iam::<AWSアカウントID>:user/<IAMユーザー名>
 ```
 
-`000000000000` や `root` が表示される場合は、LocalStack向きのendpointやaliasが残っている可能性があります。
+`000000000000` や `root` が表示される場合は、LocalStack向きのendpointやaliasが残っている可能性がある。
 
 AWS CLI設定の確認:
 
@@ -162,7 +162,7 @@ aws ec2 describe-addresses \
   --output table
 ```
 
-NAT GatewayとElastic IPは課金対象のため、作業後に必ず削除確認します。
+NAT GatewayとElastic IPは課金対象のため、作業後に必ず削除確認する。
 
 ## 7. Route Tableの確認
 
@@ -207,7 +207,7 @@ aws ec2 describe-security-groups \
 curl -s https://checkip.amazonaws.com
 ```
 
-SSHを許可する場合、実運用では `0.0.0.0/0` ではなく、自分のIP `/32` に絞ります。
+SSHを許可する場合、実運用では `0.0.0.0/0` ではなく、自分のIP `/32` に絞る。
 
 ## 9. EC2の確認
 
@@ -346,11 +346,11 @@ aws ce get-cost-and-usage \
   --output table
 ```
 
-Cost Explorerは反映に時間がかかるため、即時の課金確認には向きません。
+Cost Explorerは反映に時間がかかるため、即時の課金確認には向かない。
 
 ## 13. 削除確認
 
-学習後、削除漏れがないか確認します。
+学習後、削除漏れがないか確認する。
 
 VPC:
 
@@ -395,7 +395,7 @@ aws ec2 describe-instances \
 
 ## 14. LocalStackを使う場合
 
-LocalStackを操作する場合は、実AWSとは明確に分けます。
+LocalStackを操作する場合は、実AWSとは明確に分ける。
 
 直接指定する例:
 
@@ -421,7 +421,7 @@ LocalStack確認:
 curl http://localhost:4566/_localstack/health
 ```
 
-LocalStack利用時は、実AWS用の `aws` コマンドと混同しないようにします。
+LocalStack利用時は、実AWS用の `aws` コマンドと混同しないようにする。
 
 推奨:
 

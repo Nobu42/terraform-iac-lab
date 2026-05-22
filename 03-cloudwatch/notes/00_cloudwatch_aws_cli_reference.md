@@ -1,19 +1,19 @@
 # CloudWatch AWS CLI Reference
 
-このメモは、CloudWatchをAWS CLIで操作するときの基本文法を整理したリファレンスです。
+このメモは、CloudWatchをAWS CLIで操作するときの基本文法を整理したリファレンス。
 
-このラボでは、AWSマネジメントコンソールだけに頼らず、CloudWatch Logs、CloudWatch Alarm、CloudWatch DashboardをAWS CLIから作成、確認、削除できるようにします。
+このラボでは、AWSマネジメントコンソールだけに頼らず、CloudWatch Logs、CloudWatch Alarm、CloudWatch DashboardをAWS CLIから作成、確認、削除できるようにする。
 
 ## 基本設定
 
-このリポジトリでは、AWS CLIのprofileとregionを以下の前提で扱います。
+このリポジトリでは、AWS CLIのprofileとregionを以下の前提で扱う。
 
 ```bash
 PROFILE="learning"
 REGION="ap-northeast-1"
 ```
 
-コマンド実行時は、基本的に以下を指定します。
+コマンド実行時は、基本的に以下を指定する。
 
 ```bash
 --profile learning
@@ -28,15 +28,15 @@ aws sts get-caller-identity \
   --output table
 ```
 
-CloudWatchはリージョン単位のサービスです。
+CloudWatchはリージョン単位のサービス。
 
-EC2、ALB、RDS、ElastiCacheが東京リージョンにある場合、CloudWatch Logs、Alarm、Dashboardも `ap-northeast-1` で確認します。
+EC2、ALB、RDS、ElastiCacheが東京リージョンにある場合、CloudWatch Logs、Alarm、Dashboardも `ap-northeast-1` で確認する。
 
 ## CloudWatch Logs
 
-CloudWatch Logsは、EC2やアプリケーションのログを集約して確認するサービスです。
+CloudWatch Logsは、EC2やアプリケーションのログを集約して確認するサービス。
 
-このラボでは、CloudWatch Agentを使って、Web EC2上のnginx / PumaログをCloudWatch Logsへ送信します。
+このラボでは、CloudWatch Agentを使って、Web EC2上のnginx / PumaログをCloudWatch Logsへ送信する。
 
 ### Log Group一覧を確認する
 
@@ -77,9 +77,9 @@ aws logs create-log-group \
   --log-group-name /nobu-iac-lab/puma/stdout
 ```
 
-すでに同名のLog Groupが存在する場合は、`ResourceAlreadyExistsException` になります。
+すでに同名のLog Groupが存在する場合は、`ResourceAlreadyExistsException` になる。
 
-スクリプトでは、存在していても止まらないように以下のように扱うことがあります。
+スクリプトでは、存在していても止まらないように以下のように扱うことがある。
 
 ```bash
 aws logs create-log-group \
@@ -89,7 +89,7 @@ aws logs create-log-group \
   2>/dev/null || true
 ```
 
-ただし、エラーを握りつぶす書き方なので、学習中はまず通常コマンドで実行し、エラー内容を確認する方が理解しやすいです。
+ただし、エラーを握りつぶす書き方なので、学習中はまず通常コマンドで実行し、エラー内容を確認する方が理解しやすい。
 
 ### Log Groupの保持期間を設定する
 
@@ -109,9 +109,9 @@ aws logs put-retention-policy \
 - `--retention-in-days`
   - ログを何日保持するか。
 
-このラボでは、コストを抑えるため7日保持にしています。
+このラボでは、コストを抑えるため7日保持にしている。
 
-保持期間を設定しない場合、CloudWatch Logsは無期限保持になります。
+保持期間を設定しない場合、CloudWatch Logsは無期限保持になる。
 
 ### Log Stream一覧を確認する
 
@@ -136,7 +136,7 @@ aws logs describe-log-streams \
 - `--descending`
   - 新しい順に表示する。
 
-CloudWatch Agent設定でLog Stream名にInstanceIdを使うと、`web01` / `web02` のログを区別できます。
+CloudWatch Agent設定でLog Stream名にInstanceIdを使うと、`web01` / `web02` のログを区別できる。
 
 例:
 
@@ -208,15 +208,15 @@ aws logs delete-log-group \
 
 注意:
 
-Log Groupを削除すると、その中のLog Streamとログイベントも削除されます。
+Log Groupを削除すると、その中のLog Streamとログイベントも削除される。
 
-トラブル調査に必要なログも消えるため、日次cleanupでは削除するか残すかを方針として決めます。
+トラブル調査に必要なログも消えるため、日次cleanupでは削除するか残すかを方針として決める。
 
-このラボでは、通常は保持期間7日で残し、完全cleanupしたい場合だけ削除する方針です。
+このラボでは、通常は保持期間7日で残し、完全cleanupしたい場合だけ削除する方針。
 
 ## CloudWatch Alarm
 
-CloudWatch Alarmは、メトリクスが一定条件を満たしたときに状態を変化させる機能です。
+CloudWatch Alarmは、メトリクスが一定条件を満たしたときに状態を変化させる機能。
 
 Alarm状態:
 
@@ -235,7 +235,7 @@ INSUFFICIENT_DATA
 - `INSUFFICIENT_DATA`
   - 判定に必要なメトリクスデータがまだ足りない。
 
-作成直後のAlarmは `INSUFFICIENT_DATA` になることがあります。
+作成直後のAlarmは `INSUFFICIENT_DATA` になることがある。
 
 ### Alarm一覧を確認する
 
@@ -358,7 +358,7 @@ aws cloudwatch put-metric-alarm \
   --no-actions-enabled
 ```
 
-このAlarmは、基盤、EC2、OS寄りの死活監視です。
+このAlarmは、基盤、EC2、OS寄りの死活監視。
 
 ```text
 StatusCheckFailed = 0
@@ -368,7 +368,7 @@ StatusCheckFailed = 1
   System Status Check または Instance Status Check が失敗
 ```
 
-アプリケーションの死活は、ALB Target Groupの `HealthyHostCount` と組み合わせて確認します。
+アプリケーションの死活は、ALB Target Groupの `HealthyHostCount` と組み合わせて確認する。
 
 ### ALB 5xx Alarmを作成する
 
@@ -390,9 +390,9 @@ aws cloudwatch put-metric-alarm \
   --no-actions-enabled
 ```
 
-`HTTPCode_ELB_5XX_Count` は、ALB自身が返した5xxエラー数です。
+`HTTPCode_ELB_5XX_Count` は、ALB自身が返した5xxエラー数。
 
-アプリケーション側が返した5xxは、`HTTPCode_Target_5XX_Count` で確認します。
+アプリケーション側が返した5xxは、`HTTPCode_Target_5XX_Count` で確認する。
 
 ### Target Group HealthyHostCount Alarmを作成する
 
@@ -416,7 +416,7 @@ aws cloudwatch put-metric-alarm \
   --no-actions-enabled
 ```
 
-このラボはWeb EC2 2台構成のため、正常なTargetが2未満になったらALARMにします。
+このラボはWeb EC2 2台構成のため、正常なTargetが2未満になったらALARMにする。
 
 ```text
 HealthyHostCount = 2
@@ -469,11 +469,11 @@ aws cloudwatch put-metric-alarm \
   --no-actions-enabled
 ```
 
-`FreeStorageSpace` はBytes単位です。
+`FreeStorageSpace` はBytes単位。
 
-このラボではRDSの割り当てストレージを20GiBで作成しているため、残り5GiB、つまり約25%を下回ったら警告する設定にしています。
+このラボではRDSの割り当てストレージを20GiBで作成しているため、残り5GiB、つまり約25%を下回ったら警告する設定にしている。
 
-実務では固定値ではなく、DBサイズ、増加速度、対応に必要な時間を考慮して設計します。
+実務では固定値ではなく、DBサイズ、増加速度、対応に必要な時間を考慮して設計する。
 
 RDS接続数:
 
@@ -534,9 +534,9 @@ aws cloudwatch put-metric-alarm \
   --no-actions-enabled
 ```
 
-`CurrConnections` は、Redisノードに現在接続しているクライアント接続数です。
+`CurrConnections` は、Redisノードに現在接続しているクライアント接続数。
 
-これはWebアプリのログインユーザー数ではなく、Railsアプリ、Puma、Redisクライアント、connection pool、運用接続などを含みます。
+これはWebアプリのログインユーザー数ではなく、Railsアプリ、Puma、Redisクライアント、connection pool、運用接続などを含む。
 
 ### Alarmを削除する
 
@@ -549,9 +549,9 @@ aws cloudwatch delete-alarms \
     nobu-iac-lab-targetgroup-healthy-host-low
 ```
 
-複数のAlarm名をまとめて指定できます。
+複数のAlarm名をまとめて指定できる。
 
-スクリプトでは、prefixでAlarm名を取得してまとめて削除します。
+スクリプトでは、prefixでAlarm名を取得してまとめて削除する。
 
 ```bash
 ALARM_NAMES=$(aws cloudwatch describe-alarms \
@@ -564,9 +564,9 @@ ALARM_NAMES=$(aws cloudwatch describe-alarms \
 
 ## CloudWatch Dashboard
 
-CloudWatch Dashboardは、メトリクスやテキストを1つの画面にまとめる機能です。
+CloudWatch Dashboardは、メトリクスやテキストを1つの画面にまとめる機能。
 
-AWS CLIでは、Dashboard Body JSONを `put-dashboard` に渡して作成します。
+AWS CLIでは、Dashboard Body JSONを `put-dashboard` に渡して作成する。
 
 ### Dashboardを作成する
 
@@ -589,7 +589,7 @@ aws cloudwatch put-dashboard \
 - `--dashboard-body`
   - Dashboard定義JSON。
 
-同じDashboard名で再実行すると、既存Dashboardは上書き更新されます。
+同じDashboard名で再実行すると、既存Dashboardは上書き更新される。
 
 ### Dashboardを確認する
 
@@ -630,11 +630,11 @@ aws cloudwatch delete-dashboards \
 
 ## Dimension
 
-Dimensionは、同じメトリクス名の中から対象リソースを絞り込むためのキーと値です。
+Dimensionは、同じメトリクス名の中から対象リソースを絞り込むためのキーと値。
 
-発音は、単数形が `dimension`、カタカナでは「ディメンション」です。
+発音は、単数形が `dimension`、カタカナでは「ディメンション」。
 
-複数形 `dimensions` は「ディメンションズ」です。
+複数形 `dimensions` は「ディメンションズ」。
 
 ```text
 MetricName:
@@ -675,7 +675,7 @@ Dimension : TargetGroup = targetgroup/sample-tg/xxxxxxxxxxxxxxxx
 
 ## ALB / Target Group Dimensionの取り出し
 
-ALBやTarget GroupのCloudWatch Dimensionでは、ARN全体ではなくARNの一部を使います。
+ALBやTarget GroupのCloudWatch Dimensionでは、ARN全体ではなくARNの一部を使う。
 
 ALB ARN:
 
@@ -689,7 +689,7 @@ CloudWatchで使う値:
 app/sample-elb/abc123
 ```
 
-bashでは以下のように取り出します。
+bashでは以下のように取り出する。
 
 ```bash
 ALB_DIMENSION="${ALB_ARN#*loadbalancer/}"
@@ -705,7 +705,7 @@ ${変数#パターン}
   任意の文字列 + loadbalancer/
 ```
 
-つまり、ALB ARNの先頭から `loadbalancer/` までを削除し、CloudWatch Dimensionに必要な部分だけを残しています。
+つまり、ALB ARNの先頭から `loadbalancer/` までを削除し、CloudWatch Dimensionに必要な部分だけを残している。
 
 Target Group ARN:
 
@@ -719,18 +719,18 @@ CloudWatchで使う値:
 targetgroup/sample-tg/def456
 ```
 
-bashでは以下のように取り出します。
+bashでは以下のように取り出する。
 
 ```bash
 TARGET_GROUP_DIMENSION="${TARGET_GROUP_ARN#*targetgroup/}"
 TARGET_GROUP_DIMENSION="targetgroup/${TARGET_GROUP_DIMENSION}"
 ```
 
-一度 `sample-tg/def456` を取り出し、CloudWatch Dimension形式に合わせて `targetgroup/` を付け直しています。
+一度 `sample-tg/def456` を取り出し、CloudWatch Dimension形式に合わせて `targetgroup/` を付け直している。
 
 ## よく使うquery
 
-AWS CLIの `--query` は、出力JSONから必要な部分だけを取り出すために使います。
+AWS CLIの `--query` は、出力JSONから必要な部分だけを取り出すために使う。
 
 Alarm名だけ取得:
 
@@ -776,7 +776,7 @@ aws cloudwatch list-dashboards \
 
 ## このラボでのCloudWatch操作順
 
-このラボでは、CloudWatchを以下の順番で扱います。
+このラボでは、CloudWatchを以下の順番で扱う。
 
 1. Web EC2のIAM RoleへCloudWatch Logs送信用権限を付与する
 2. AnsibleでCloudWatch Agentをインストールする
@@ -792,21 +792,21 @@ aws cloudwatch list-dashboards \
 CloudWatch Logsについて:
 
 ```text
-CloudWatch AgentをWeb EC2に導入し、nginx access/error logとPuma stdout/stderr logをCloudWatch Logsへ集約しました。
-これにより、複数WebサーバーへSSHしなくても、Railsのリクエストログやnginxのエラーを横断的に確認できます。
+CloudWatch AgentをWeb EC2に導入し、nginx access/error logとPuma stdout/stderr logをCloudWatch Logsへ集約した。
+これにより、複数WebサーバーへSSHしなくても、Railsのリクエストログやnginxのエラーを横断的に確認できる。
 ```
 
 CloudWatch Alarmについて:
 
 ```text
-EC2のCPUとStatusCheck、ALBの5xx、Target GroupのHealthyHostCount、RDSのCPU、空き容量、接続数、ElastiCacheのCPUと接続数にAlarmを設定しました。
-基盤、HTTP、DB、キャッシュの主要な運用監視項目を一通り確認できる構成にしています。
+EC2のCPUとStatusCheck、ALBの5xx、Target GroupのHealthyHostCount、RDSのCPU、空き容量、接続数、ElastiCacheのCPUと接続数にAlarmを設定した。
+基盤、HTTP、DB、キャッシュの主要な運用監視項目を一通り確認できる構成にしている。
 ```
 
 CloudWatch Dashboardについて:
 
 ```text
-運用時に見るべきメトリクスをCloudWatch Dashboardにまとめました。
-EC2、ALB、Target Group、RDS、ElastiCacheの状態を1画面で確認できるようにしています。
-Dashboard Body JSONもAWS CLIで生成し、再作成できる形にしています。
+運用時に見るべきメトリクスをCloudWatch Dashboardにまとめた。
+EC2、ALB、Target Group、RDS、ElastiCacheの状態を1画面で確認できるようにしている。
+Dashboard Body JSONもAWS CLIで生成し、再作成できる形にしている。
 ```
