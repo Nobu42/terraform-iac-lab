@@ -220,6 +220,7 @@ aws cloudwatch get-dashboard \
   --region ap-northeast-1 \
   --dashboard-name nobu-iac-lab-dashboard
 ```
+
 ## 現在の到達点
 
 - CloudWatch Agentをweb01 / web02へ導入
@@ -240,4 +241,3 @@ aws cloudwatch get-dashboard \
 - CloudWatch Dashboardの表示項目調整
 - cleanup_all.shへのCloudWatch Alarm / Dashboard削除処理追加検討
 - 運用確認手順の整理
-

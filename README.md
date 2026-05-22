@@ -4,8 +4,6 @@
 ![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)
 ![Shell Script](https://img.shields.io/badge/shell_script-%23121011.svg?style=for-the-badge&logo=gnu-bash&logoColor=white)
 ![Ansible](https://img.shields.io/badge/Ansible-%231A1918.svg?style=for-the-badge&logo=ansible&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-%232496ED.svg?style=for-the-badge&logo=docker&logoColor=white)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-%23326CE5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 
 AWS上にWebアプリケーション基盤を構築し、構築手順、依存関係、運用、監視、削除までを確認するための学習用リポジトリです。
 
@@ -107,16 +105,8 @@ Links:
 
 AWS CLIで作成した構成をTerraformで再現します。
 
-現在はTerraform化計画を作成し、まずはVPC、Public / Private Subnet、Internet Gateway、Public Route Tableから段階的に進めています。
-
-最初のTerraform化対象:
-
-- VPC
-- Public Subnet x2
-- Private Subnet x2
-- Internet Gateway
-- Public Route Table
-- Public Route Table Association
+現在はVPC、Subnet、Route Table、Security Group、EC2、ALB、RDS、S3、Route 53 / ACM、ElastiCacheまでをTerraformで表現しています。
+既存のPublic Hosted ZoneやACM証明書はdata sourceで参照し、日次で作成・削除するリソースと継続利用するリソースを分けています。
 
 確認済み項目:
 
@@ -132,6 +122,12 @@ AWS CLIで作成した構成をTerraformで再現します。
 - Webアプリ未起動時のTarget Group Health Check失敗確認
 - RDS / S3 / Route 53 / ACM / ElastiCacheのplan確認
 - 既存Public Hosted Zone / ACM証明書のdata source参照
+
+次に扱う予定:
+
+- Route 53 Private Hosted Zone
+- CloudWatch Alarm / DashboardのTerraform化
+- GuardDutyの有効化、サンプルFinding確認、調査手順整理
 
 Links:
 
@@ -230,6 +226,7 @@ cd /Users/nobu/terraform-iac-lab/01-aws-cli/scripts
 ## Roadmap
 
 - Terraform化の継続
+- GuardDutyによるセキュリティ検知の確認
 - Backup設計とリストアテスト
 - 構築後テスト設計
 - Auto Scaling Group

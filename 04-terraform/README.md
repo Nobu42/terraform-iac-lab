@@ -2,7 +2,8 @@
 
 このディレクトリでは、AWS CLIとShell Scriptで構築してきたAWS Webアプリケーション基盤をTerraformへ段階的に移行します。
 
-まずはVPC、Subnet、Internet Gateway、Route Tableなどのネットワーク基盤から始め、EC2、ALB、RDS、S3、Route 53、ElastiCache、CloudWatchへ広げていきます。
+まずはVPC、Subnet、Internet Gateway、Route Tableなどのネットワーク基盤から始め、EC2、ALB、RDS、S3、Route 53、ElastiCacheまで段階的に広げています。
+次の段階では、Private Hosted Zone、CloudWatch、GuardDutyなど、運用・監視・セキュリティ寄りの構成を追加します。
 
 ## 目的
 
@@ -15,7 +16,7 @@
 
 最初から全リソースをTerraform化せず、小さい単位で確認しながら進めます。
 
-最初の対象:
+段階的に追加してきた対象:
 
 ```text
 VPC
@@ -24,13 +25,28 @@ Private Subnet x2
 Internet Gateway
 Public Route Table
 Public Route Table Association
+NAT Gateway
+Private Route Table
+Security Group
+EC2
+ALB / Target Group
+RDS
+S3
+Route 53 / ACM
+ElastiCache
 ```
 
 現在は、RDS、S3、Route 53 / ACM、ElastiCacheまで追加し、主要なWebアプリケーション基盤をTerraformで表現しています。
 
 Web EC2上のアプリケーションは未構築のため、Target Group Health Checkは `unhealthy`、ALBの応答は `502 Bad Gateway` になることを確認済みです。
 
-NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら追加します。
+NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは、小さい単位で `plan` / `apply` / `destroy` を確認しながら扱います。
+
+次に扱う予定:
+
+- Route 53 Private Hosted Zone
+- CloudWatch Alarm / Dashboard
+- GuardDutyの有効化とサンプルFinding確認
 
 ## フォルダ構成
 
@@ -48,7 +64,6 @@ NAT Gateway、ALB、RDS、ElastiCacheなどの課金が大きいリソースは�
     07_s3.md
     08_route53_acm.md
     09_elasticache.md
-    10_cloudwatch.md
   envs/
     dev/
       versions.tf
@@ -78,9 +93,14 @@ Terraform化の全体計画は以下に整理しています。
 - [Route 53 / ACM](./notes/08_route53_acm.md)
 - [ElastiCache](./notes/09_elasticache.md)
 
-## 初回作成ファイル
+今後追加する予定のメモ:
 
-次に作成するファイル:
+- CloudWatch Alarm / Dashboard
+- GuardDuty
+
+## Terraformファイル
+
+現在の基本ファイル:
 
 ```text
 04-terraform/envs/dev/versions.tf

@@ -19,7 +19,7 @@
 
 各リソースの作成順序、依存関係、削除順序を理解するために、構築スクリプト、確認スクリプト、削除スクリプト、コスト確認スクリプトを作成しています。
 
-さらに、Amazon Linux 2023での差分対応、Route 53 Public / Private DNS、ACM、SES、ElastiCache、AnsibleによるRailsデプロイ、CloudWatch監視、Terraform化、Auto Scaling、ECS/Fargate、CI/CDへ学習範囲を広げていく予定です。
+さらに、Amazon Linux 2023での差分対応、Route 53 Public / Private DNS、ACM、SES、ElastiCache、AnsibleによるRailsデプロイ、CloudWatch監視、Terraform化、GuardDuty、Auto Scaling、ECS/Fargate、CI/CDへ学習範囲を広げていく予定です。
 
 そのため、本リポジトリは書籍内容の単純な写経ではなく、GUIベースの構築手順をコード化し、運用と自動化の観点を加えて再構成した学習用ポートフォリオです。
 
@@ -32,9 +32,10 @@
 3. AnsibleでEC2内部の設定とRailsアプリケーションのデプロイを行う
 4. CloudWatch Logs、メトリクス、アラーム、ダッシュボードを設定する
 5. Terraformで同じ構成をコード化する
-6. Auto Scaling Groupを追加する
-7. ECS/FargateでWebアプリケーションを動かす
-8. CodePipelineまたはGitHub Actionsでデプロイ手順を作る
+6. GuardDutyでセキュリティ検知と調査手順を確認する
+7. Auto Scaling Groupを追加する
+8. ECS/FargateでWebアプリケーションを動かす
+9. CodePipelineまたはGitHub Actionsでデプロイ手順を作る
 
 ## 現在扱っている構成
 
@@ -90,4 +91,3 @@
 - タグ、コスト確認、構築確認、削除手順を含めた基本的な運用
 - Terraform化する際に必要になるリソース間の依存関係
 - 構築中に発生したエラーの原因調査と再発防止
-
