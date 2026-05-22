@@ -25,6 +25,7 @@ AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsi
 | [`02-ansible`](./02-ansible/README.md) | EC2内部設定、Rails 7.2アプリケーションデプロイ |
 | [`03-cloudwatch`](./03-cloudwatch/README.md) | CloudWatch Logs、Alarm、Dashboard |
 | [`04-terraform`](./04-terraform/README.md) | AWS CLIで作成した構成のTerraform化 |
+| [`05-security`](./05-security/README.md) | AWSセキュリティ確認、GuardDuty、影響調査、変更手順 |
 | [`docs`](./docs) | 設計書、運用設計、トラブルシューティング、構成図 |
 | [`dotfiles`](./dotfiles) | 作業環境用dotfiles |
 
@@ -142,6 +143,27 @@ Links:
 - [S3 Terraform化メモ](./04-terraform/notes/07_s3.md)
 - [Route 53 / ACM Terraform化メモ](./04-terraform/notes/08_route53_acm.md)
 - [ElastiCache Terraform化メモ](./04-terraform/notes/09_elasticache.md)
+
+## 05 Security
+
+AWS環境のセキュリティ確認、ネットワーク設定の影響調査、検知サービスの動作確認、変更手順の整理を行う。
+
+GuardDuty、S3、VPC、Security Group、CloudWatch Logs、Lambdaなどを、単なるサービス名ではなく、実際の調査・設定確認・手順書作成の流れとして確認する。
+
+扱う予定:
+
+- GuardDutyの有効化
+- サンプルFinding確認
+- S3公開設定確認
+- VPC / Security Group / Route Tableの影響調査
+- Lambda最小構成
+- 変更手順書サンプル作成
+
+Links:
+
+- [Security編 README](./05-security/README.md)
+- [Security Study Plan](./05-security/notes/00_security_study_plan.md)
+- [Security scripts](./05-security/scripts)
 
 ## Daily Operation
 
