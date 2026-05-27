@@ -41,16 +41,13 @@ AWSセキュリティ確認
   README.md
   scripts/
     01_guardduty_enable.sh
-    02_guardduty_sample_findings.sh
-    03_guardduty_cleanup.sh
-    04_s3_security_check.sh
+    02_create_sample_findings.sh
+    03_get_findings_detail.sh
+    04_get_findings_by_type.sh
+    05_cleanup_guardduty.sh
   notes/
     00_security_study_plan.md
-    01_guardduty_reference.md
-    02_s3_security_check.md
-    03_vpc_security_group_impact.md
-    04_lambda_basic.md
-    05_change_procedure_example.md
+    05_guardduty_investigation_notes.md
 ```
 
 ## 学習ステップ
@@ -70,7 +67,7 @@ GuardDutyは、AWSアカウント内の不審な挙動を検知する脅威検�
 - 対象リソースの見方
 - 検知後にどのログや設定を確認するか
 
-確認後に説明できるようにすること:
+確認後に整理すること:
 
 ```text
 GuardDutyを有効化し、サンプルFindingを生成して、重要度、Finding Type、対象リソース、推奨対応を確認した。
@@ -90,7 +87,7 @@ GuardDutyを有効化し、サンプルFindingを生成して、重要度、Find
 - Versioning
 - IAM Roleからのアクセス
 
-確認後に説明できるようにすること:
+確認後に整理すること:
 
 ```text
 S3については、Block Public Access、Bucket Policy、暗号化、Versioning、IAM Roleからのアクセス範囲を確認した。
@@ -122,7 +119,7 @@ Web EC2 -> Internet : NAT Gateway
 - NAT Gatewayを止めると何が困るか
 - ALBのTarget Groupがunhealthyになる原因
 
-確認後に説明できるようにすること:
+確認後に整理すること:
 
 ```text
 Security Group変更時は、通信元、通信先、ポート、プロトコル、関連するALBやRDSなどを確認し、変更前の状態、作業後確認、切り戻し手順を整理する。
@@ -141,7 +138,7 @@ LambdaはAWS環境の基本的な自動化・イベント処理を理解する�
 - CloudWatch Logsにログが出ることを確認する
 - EventBridgeや手動実行で起動する
 
-確認後に説明できるようにすること:
+確認後に整理すること:
 
 ```text
 Lambdaについては、イベント駆動で処理を実行し、実行Roleの権限でAWSサービスへアクセスし、CloudWatch Logsへ実行ログを出す流れを確認した。
@@ -170,7 +167,7 @@ GuardDuty Finding確認手順書
 - 切り戻し手順
 - 異常時の確認観点
 
-確認後に説明できるようにすること:
+確認後に整理すること:
 
 ```text
 手順書作成では、作業手順だけでなく、事前確認、作業後確認、切り戻し手順、異常時の判断基準を入れることを意識している。
@@ -178,7 +175,7 @@ GuardDuty Finding確認手順書
 
 ## 推奨実行順
 
-週末の学習では、以下の順番で進める。
+以下の順番で確認する。
 
 ```text
 1. GuardDutyの基本を読む

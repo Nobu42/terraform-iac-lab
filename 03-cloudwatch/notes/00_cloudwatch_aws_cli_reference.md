@@ -787,7 +787,7 @@ aws cloudwatch list-dashboards \
 7. CloudWatch Dashboardを作成する
 8. cleanup時にAlarm / Dashboardを削除する
 
-## 面接での説明例
+## 構成説明例
 
 CloudWatch Logsについて:
 
