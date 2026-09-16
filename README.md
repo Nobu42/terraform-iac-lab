@@ -6,7 +6,6 @@
 ![Ansible](https://img.shields.io/badge/Ansible-%231A1918.svg?style=for-the-badge&logo=ansible&logoColor=white)
 
 AWS上にWebアプリケーション基盤を構築し、構築手順、依存関係、運用、監視、削除までを確認するための学習用リポジトリ。
-ShellでAWS CLIをラップしたスクリプトで設計通りのインフラを構築。その後Terraform化して行く予定。
 
 AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsibleでRailsアプリケーションをデプロイし、CloudWatchでログ収集・監視を追加する。現在は、同じ構成をTerraformへ段階的に移行している。
 
