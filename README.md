@@ -11,6 +11,17 @@ AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsi
 
 詳細な学習方針、参考資料、扱っている構成一覧は [Project Overview](./docs/Project_Overview.md) を参照する。
 
+## 関連プロジェクト: AWS CDK / CI/CD
+
+[AWS CDK / CI/CD Lab](https://github.com/Nobu42/aws-cdk-cicd-lab)
+
+本ラボの設計を参考に、TypeScriptによるAWS CDKとCI/CDの検証を別リポジトリで進めている。
+
+- 実施済み: ローカル開発環境の準備、CDKプロジェクト初期化、TypeScriptビルド、初回CloudFormationテンプレート生成。
+- 今後の予定: 環境別パラメーターによるCDKデプロイ、Gitのブランチ・レビュー運用、CodePipeline / CodeBuild / CodeDeployの構築・検証。
+
+コードと作業記録をGitHubで公開している。現時点ではローカルでの検証段階であり、AWSへのデプロイとCI/CD構築は未実施。
+
 ## Network Architecture
 
 このラボの論理構成図。詳細なパラメータ設定については [設計仕様書](./docs/Design_Specification.md) を参照する。
