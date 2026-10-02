@@ -24,9 +24,14 @@ AWS CLIとShell Scriptでインフラ構築順序を確認し、その上にAnsi
 
 ## Network Architecture
 
-このラボの論理構成図。詳細なパラメータ設定については [設計仕様書](./docs/Design_Specification.md) を参照する。
+設計書をもとにPython Diagramsで作成した構成図。AWSの実環境を照会した図ではない。詳細なパラメータ設定については [設計仕様書](./docs/Design_Specification.md) を参照する。
 
-![Network Architecture](./docs/Network_Architecture.png?v=4)
+![ネットワーク構成図](./docs/network-diagrams/01-network.png)
+
+- [ネットワーク構成図を拡大](./docs/network-diagrams/01-network.png)
+- [NAT Gateway・外向き通信経路](./docs/network-diagrams/02-egress.png)
+- [DNS・証明書・S3・メール連携](./docs/network-diagrams/03-services.png)
+- [図の説明・再生成手順](./docs/network-diagrams/README.md) / [Pythonコード](./docs/network-diagrams/network_diagrams.py)
 
 ## Repository Structure
 
